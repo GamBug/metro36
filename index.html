@@ -11,8 +11,18 @@
 <body>
 
     <div class="header">
-        <h1>Metro Architect</h1>
-        <p class="desc">Left Click to Draw | Middle/Right Click to Pan | Scroll to Zoom</p>
+        <div class="header-left">
+            <h1>Metro Architect</h1>
+            <p class="desc">Left Click to Draw | Middle/Right Click to Pan | Scroll to Zoom</p>
+        </div>
+        <div class="header-right">
+            <div class="save-load-group">
+                <button id="saveMapBtn" class="btn-save" title="Ctrl+S">💾 Save Map (Ctrl+S)</button>
+                <button id="loadMapBtn" class="btn-load" title="Ctrl+O">📂 Load Map (Ctrl+O)</button>
+                <input type="file" id="loadMapFile" accept=".json" style="display: none;">
+            </div>
+            <button id="clearBtn" class="btn-clear" title="Ctrl+E">🗑️ Clear Board (Ctrl+E)</button>
+        </div>
     </div>
 
     <div class="app-container">
@@ -23,9 +33,27 @@
                 <div class="color-palette" id="colorPalette"></div>
             </div>
 
-            <div class="tool-section">
+            <div class="tool-section" style="margin-top: auto;">
                 <h3>Track Style</h3>
-                <div class="track-palette" id="trackPalette"></div>
+                <div id="trackPalette"></div>
+            </div>
+        </div>
+
+        <!-- Infinite Drawing Grid -->
+        <div id="grid-viewport" class="grid-viewport">
+            <div id="grid-canvas" class="grid-canvas">
+                <svg id="connections-layer" overflow="visible"></svg>
+                <div id="grid-cursor-highlight"></div>
+                <img id="ref-image" style="display: none;">
+            </div>
+            <div id="grid-preview" class="grid-preview"></div>
+        </div>
+
+        <!-- Right Panel for Station List -->
+        <div class="right-panel" id="rightPanel">
+            <div class="tool-section">
+                <h3>Track Stations</h3>
+                <div id="trackList" style="color: #94a3b8; font-size: 0.9rem;">No tracks placed.</div>
             </div>
 
             <div class="tool-section">
@@ -50,33 +78,6 @@
                 </div>
             </div>
 
-            <div class="tool-section" style="margin-top: auto;">
-                <div class="save-load-group">
-                    <button id="saveMapBtn" class="btn-save">💾 Save Map</button>
-                    <button id="loadMapBtn" class="btn-load">📂 Load Map</button>
-                    <input type="file" id="loadMapFile" accept=".json" style="display: none;">
-                </div>
-                <button id="clearBtn" class="btn-clear">Clear Board</button>
-            </div>
-        </div>
-
-        <!-- Infinite Drawing Grid -->
-        <div id="grid-viewport" class="grid-viewport">
-            <div id="grid-canvas" class="grid-canvas">
-                <svg id="connections-layer" overflow="visible"></svg>
-                <div id="grid-cursor-highlight"></div>
-                <img id="ref-image" style="display: none;">
-            </div>
-            <div id="grid-preview" class="grid-preview"></div>
-        </div>
-
-        <!-- Right Panel for Station List -->
-        <div class="right-panel" id="rightPanel">
-            <div class="tool-section">
-                <h3>Track Stations</h3>
-                <div id="trackList" style="color: #94a3b8; font-size: 0.9rem;">No tracks placed.</div>
-            </div>
-
             <!-- Route Finder Section -->
             <div class="tool-section route-finder-section">
                 <h3>🚇 Find Route</h3>
@@ -92,7 +93,7 @@
                         <label for="routeTo">To</label>
                         <select id="routeTo" class="route-select"><option value="">-- Select Station --</option></select>
                     </div>
-                    <button id="findRouteBtn" class="btn-find-route">Find Route</button>
+                    <button id="findRouteBtn" class="btn-find-route" title="Press Enter">Find Route (Enter)</button>
                     <button id="clearRouteBtn" class="btn-clear-route" style="display:none;">Clear Route</button>
                 </div>
                 <div id="routeResult" class="route-result"></div>
@@ -133,6 +134,10 @@
             <g id="track-t-bot">
                 <path d="M 0 20 L 40 20 M 20 20 L 20 40" stroke="currentColor" stroke-width="18" stroke-linecap="square"
                     stroke-linejoin="round" fill="none" />
+            </g>
+            <!-- One-Way Arrow Overlay -->
+            <g id="track-oneway-arrow">
+                <path d="M 15 10 L 25 20 L 15 30" stroke="#f1f5f9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </g>
         </defs>
     </svg>

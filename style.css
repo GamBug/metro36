@@ -17,6 +17,25 @@
             flex-direction: column;
             align-items: center;
             margin: 0;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        :root {
+            /* Application Theming */
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --grid-bg: #1e293b;
+            --cell-bg: transparent;
+            --cell-hover: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-gradient);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
             padding: 20px 20px 40px 20px;
             box-sizing: border-box;
             user-select: none;
@@ -24,9 +43,25 @@
         }
 
         .header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 24px;
             flex-shrink: 0;
+            width: 100%;
+            max-width: 1800px;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
         }
 
         h1 {
@@ -174,11 +209,31 @@
             transform: scale(1.15);
         }
 
-        /* Track Palette */
-        .track-palette {
+        /* Track Groups */
+        .track-group {
+            margin-bottom: 20px;
+        }
+
+        .track-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .track-group h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .track-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
+        }
+
+        .tools-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
 
         .track-btn {
@@ -192,26 +247,30 @@
             justify-content: center;
             align-items: center;
             transition: all 0.2s;
-            color: #cbd5e1; /* Default SVG stroke base color */
+            color: #cbd5e1;
         }
 
-        .track-btn.eraser-btn, .track-btn.magic-btn, .track-btn.station-btn {
-            grid-column: span 4;
+        .tools-grid .track-btn {
             aspect-ratio: auto;
-            height: 40px;
-            gap: 10px;
+            height: 44px;
+            flex-direction: row;
+            gap: 8px;
             font-weight: 600;
+            font-size: 0.8rem;
+            padding: 0 6px;
         }
 
-        .track-btn.eraser-btn svg, .track-btn.magic-btn svg, .track-btn.station-btn svg {
-            width: 20px;
-            height: 20px;
+        .tools-grid .track-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
         }
 
         .track-btn svg {
             width: 80%;
             height: 80%;
             pointer-events: none;
+            flex-shrink: 0;
         }
 
         .track-btn:hover {
@@ -227,19 +286,18 @@
         }
 
         .btn-clear {
-            width: 100%;
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             font-family: inherit;
             font-weight: 600;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 8px;
             border: 2px solid rgba(255, 255, 255, 0.1);
-            font-size: 1.1rem;
+            font-size: 1rem;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-top: auto; /* Push to bottom */
+            white-space: nowrap;
         }
 
         .btn-clear:hover {
@@ -254,22 +312,21 @@
 
         .save-load-group {
             display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: 12px;
         }
 
         .btn-save, .btn-load {
-            flex: 1;
-            padding: 10px 8px;
+            padding: 10px 16px;
             border-radius: 8px;
             border: 2px solid #334155;
             background: #111827;
             color: #e2e8f0;
             font-family: inherit;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .btn-save:hover {

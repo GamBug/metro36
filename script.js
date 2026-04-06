@@ -30,6 +30,8 @@ const TRACK_TYPES = [
     { type: 't-left', html: '<use href="#track-t-bot" transform="rotate(90 20 20)" />' },
     { type: 'auto', html: '' },
     { type: 'station', html: '' },
+    { type: 'pan', html: '' },
+    { type: 'oneway', html: '' },
     { type: 'transfer', html: '' }
 ];
 
@@ -78,7 +80,7 @@ const MAX_HISTORY = 100;
 
 function snapshotCell(val) {
     const layers = {};
-    for (const c in val.layers) layers[c] = { type: val.layers[c].type, isAuto: val.layers[c].isAuto };
+    for (const c in val.layers) layers[c] = { type: val.layers[c].type, isAuto: val.layers[c].isAuto, direction: val.layers[c].direction };
     return { layers, hasStation: val.hasStation, stationName: val.stationName };
 }
 
@@ -149,11 +151,12 @@ function initApp() {
 
 function initToolbar() {
     const colorPalette = document.getElementById('colorPalette');
-    METRO_COLORS.forEach(color => {
+    METRO_COLORS.forEach((color, i) => {
         const btn = document.createElement('div');
         btn.className = `color-btn ${color === selectedColor ? 'active' : ''}`;
         btn.style.backgroundColor = color;
         btn.style.boxShadow = color === selectedColor ? `0 0 15px ${color}A0` : '';
+        btn.title = `Shortcut: ${i + 1}`;
         btn.addEventListener('click', () => {
             selectedColor = color;
             document.querySelectorAll('.color-btn').forEach(b => { b.classList.remove('active'); b.style.boxShadow = ''; });
@@ -164,32 +167,72 @@ function initToolbar() {
     });
 
     const trackPalette = document.getElementById('trackPalette');
+    if (!trackPalette) return;
+    trackPalette.innerHTML = '';
+    
+    const groups = {
+        tools: { title: 'Tools', items: [] },
+        basic: { title: 'Basic Tracks', items: [] },
+        diag: { title: 'Diagonals & Corners', items: [] },
+        complex: { title: 'Intersections', items: [] }
+    };
+
     TRACK_TYPES.forEach((track, index) => {
-        const btn = document.createElement('div');
-        btn.className = `track-btn ${index === selectedTrackType ? 'active' : ''}`;
-        btn.title = track.type;
-        if (track.type === 'empty') {
-            btn.classList.add('eraser-btn');
-            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"/><line x1="16" y1="15" x2="21" y2="20"/></svg> Eraser`;
-        } else if (track.type === 'auto') {
-            btn.classList.add('magic-btn');
-            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg> Magic Tool`;
-        } else if (track.type === 'station') {
-            btn.classList.add('station-btn');
-            btn.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="10" fill="white" stroke="#38bdf8" stroke-width="6" /></svg> Station Tool`;
-        } else if (track.type === 'transfer') {
-            btn.classList.add('station-btn');
-            btn.innerHTML = `<svg viewBox="0 0 40 40"><rect x="10" y="16" width="20" height="8" fill="white" stroke="#38bdf8" stroke-width="2" /><line x1="5" y1="20" x2="35" y2="20" stroke="white" stroke-width="6" stroke-dasharray="4,4" /><line x1="5" y1="20" x2="35" y2="20" stroke="black" stroke-width="4" stroke-dasharray="2,6" /></svg> Connect Tool`;
-        } else {
-            btn.innerHTML = `<svg viewBox="0 0 40 40">${track.html}</svg>`;
-        }
-        btn.addEventListener('click', () => {
-            selectedTrackType = index;
-            document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-        trackPalette.appendChild(btn);
+        let cat = 'basic';
+        if (['empty', 'auto', 'station', 'transfer', 'pan', 'oneway'].includes(track.type)) cat = 'tools';
+        else if (track.type.startsWith('diag') || track.type.startsWith('fill') || track.type.startsWith('straight-diag')) cat = 'diag';
+        else if (track.type.startsWith('cross') || track.type.startsWith('t-')) cat = 'complex';
+        
+        groups[cat].items.push({ track, index });
     });
+
+    for (let g in groups) {
+        if (groups[g].items.length === 0) continue;
+        const groupEl = document.createElement('div');
+        groupEl.className = 'track-group';
+        
+        const titleEl = document.createElement('h4');
+        titleEl.textContent = groups[g].title;
+        groupEl.appendChild(titleEl);
+
+        const gridEl = document.createElement('div');
+        gridEl.className = 'track-grid';
+        if (g === 'tools') gridEl.classList.add('tools-grid');
+
+        groups[g].items.forEach(item => {
+            const index = item.index;
+            const track = item.track;
+            const btn = document.createElement('div');
+            btn.className = `track-btn ${index === selectedTrackType ? 'active' : ''}`;
+            btn.title = track.type;
+
+            if (track.type === 'empty') {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"/><line x1="16" y1="15" x2="21" y2="20"/></svg> Eraser (E)`;
+            } else if (track.type === 'auto') {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg> Magic Tool (M)`;
+            } else if (track.type === 'station') {
+                btn.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="10" fill="white" stroke="#38bdf8" stroke-width="6" /></svg> Station (S)`;
+            } else if (track.type === 'transfer') {
+                btn.innerHTML = `<svg viewBox="0 0 40 40"><rect x="10" y="16" width="20" height="8" fill="white" stroke="#38bdf8" stroke-width="2" /><line x1="5" y1="20" x2="35" y2="20" stroke="white" stroke-width="6" stroke-dasharray="4,4" /><line x1="5" y1="20" x2="35" y2="20" stroke="black" stroke-width="4" stroke-dasharray="2,6" /></svg> Connect (T)`;
+            } else if (track.type === 'pan') {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3-3-3M2 12h20M12 2v20"/></svg> Move (V)`;
+            } else if (track.type === 'oneway') {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> One-Way (O)`;
+            } else {
+                btn.innerHTML = `<svg viewBox="0 0 40 40">${track.html}</svg>`;
+            }
+
+            btn.addEventListener('click', () => {
+                selectedTrackType = index;
+                document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+            gridEl.appendChild(btn);
+        });
+
+        groupEl.appendChild(gridEl);
+        trackPalette.appendChild(groupEl);
+    }
 }
 
 function initViewport() {
@@ -197,7 +240,8 @@ function initViewport() {
     let isPanningModeForRef = false;
 
     viewport.addEventListener('mousedown', (e) => {
-        if (e.button === 1 || e.button === 2) {
+        const isPanTool = TRACK_TYPES[selectedTrackType] && TRACK_TYPES[selectedTrackType].type === 'pan';
+        if (e.button === 1 || e.button === 2 || (e.button === 0 && isPanTool)) {
             isPanning = true; lastMouseX = e.clientX; lastMouseY = e.clientY;
             viewport.classList.add('panning');
         } else if (e.button === 0) {
@@ -290,6 +334,20 @@ function updateCellDOM(cell, layers, hasStation, stationName) {
         const trackDef = TRACK_TYPES[layer.type];
         if (trackDef && trackDef.html) {
             svgInner += `<g style="color:${color}">${trackDef.html}</g>`;
+            if (layer.direction != null) {
+                let angle = 0;
+                switch(layer.direction) {
+                    case 0: angle = -90; break;
+                    case 1: angle = -45; break;
+                    case 2: angle = 0; break;
+                    case 3: angle = 45; break;
+                    case 4: angle = 90; break;
+                    case 5: angle = 135; break;
+                    case 6: angle = 180; break;
+                    case 7: angle = -135; break;
+                }
+                svgInner += `<use href="#track-oneway-arrow" transform="rotate(${angle} 20 20)" style="color:${color}" />`;
+            }
         }
     });
     // Station circle: use first layer color or default
@@ -315,7 +373,7 @@ function cellFirstColor(cell) {
 function updatePreview() {
     previewCanvas.innerHTML = '';
     const selectedDef = TRACK_TYPES[selectedTrackType];
-    if (selectedDef.type === 'transfer' || selectedDef.type === 'empty') return;
+    if (selectedDef.type === 'transfer' || selectedDef.type === 'empty' || selectedDef.type === 'pan' || selectedDef.type === 'oneway') return;
 
     const isStationTool = selectedDef.type === 'station';
     let cells = getLineCells(startGX, startGY, currentGX, currentGY);
@@ -347,8 +405,10 @@ function updatePreview() {
 
 function commitLine() {
     const selectedDef = TRACK_TYPES[selectedTrackType];
+    if (selectedDef.type === 'pan') return;
     const isStationTool = selectedDef.type === 'station';
     const isTransferTool = selectedDef.type === 'transfer';
+    const isOneWayTool = selectedDef.type === 'oneway';
 
     if (isTransferTool) {
         const key = `${currentGX},${currentGY}`;
@@ -387,7 +447,23 @@ function commitLine() {
     cells.forEach(c => {
         const key = `${c.x},${c.y}`;
 
-        if (selectedDef.type === 'empty') {
+        if (isOneWayTool) {
+            if (gridData.has(key)) {
+                const cell = gridData.get(key);
+                const layer = cell.layers[selectedColor];
+                if (layer && layer.type !== 0) {
+                    const exits = TRACK_EXITS[layer.type] || [];
+                    if (exits.length > 0) {
+                        let curIdx = exits.indexOf(layer.direction);
+                        if (curIdx === -1) layer.direction = exits[0];
+                        else if (curIdx + 1 < exits.length) layer.direction = exits[curIdx + 1];
+                        else layer.direction = null;
+                        updateCellDOM(cell.domNode, cell.layers, cell.hasStation, cell.stationName);
+                        affectedKeys.add(key);
+                    }
+                }
+            }
+        } else if (selectedDef.type === 'empty') {
             // Eraser: remove entire cell
             if (gridData.has(key)) {
                 const cell = gridData.get(key);
@@ -603,15 +679,31 @@ window.addEventListener('keydown', (e) => {
     const isCtrl = e.ctrlKey || e.metaKey;
     let newIndex = -1;
     if (isCtrl) {
-        if (key === 'e') { e.preventDefault(); clearBoard(); }
+        if (key === 's') { e.preventDefault(); saveMapToFile(); }
+        else if (key === 'o') { e.preventDefault(); document.getElementById('loadMapFile').click(); }
+        else if (key === 'e') { e.preventDefault(); clearBoard(); }
         else if (key === 'z') { e.preventDefault(); undo(); }
         else if (key === 'y') { e.preventDefault(); redo(); }
+        return;
+    }
+    if (key >= '1' && key <= '8') {
+        const colorIndex = parseInt(key) - 1;
+        if (colorIndex < METRO_COLORS.length) {
+            document.querySelectorAll('.color-btn')[colorIndex].click();
+        }
+        return;
+    }
+    if (key === 'enter') {
+        const findBtn = document.getElementById('findRouteBtn');
+        if (findBtn) findBtn.click();
         return;
     }
     if (key === 'e') newIndex = TRACK_TYPES.findIndex(t => t.type === 'empty');
     else if (key === 'm') newIndex = TRACK_TYPES.findIndex(t => t.type === 'auto');
     else if (key === 's') newIndex = TRACK_TYPES.findIndex(t => t.type === 'station');
     else if (key === 't') newIndex = TRACK_TYPES.findIndex(t => t.type === 'transfer');
+    else if (key === 'v') newIndex = TRACK_TYPES.findIndex(t => t.type === 'pan');
+    else if (key === 'o') newIndex = TRACK_TYPES.findIndex(t => t.type === 'oneway');
     if (newIndex !== -1) {
         if (isDrawing) { isDrawing = false; previewCanvas.innerHTML = ''; }
         if (transferStartKey && gridData.has(transferStartKey)) gridData.get(transferStartKey).domNode.classList.remove('station-selected');
@@ -777,7 +869,7 @@ function buildStationGraph() {
     gridData.forEach((cell, key) => {
         for (const color in cell.layers) {
             if (!byColor.has(color)) byColor.set(color, new Map());
-            byColor.get(color).set(key, { type: cell.layers[color].type, hasStation: cell.hasStation, stationName: cell.stationName });
+            byColor.get(color).set(key, { type: cell.layers[color].type, direction: cell.layers[color].direction, hasStation: cell.hasStation, stationName: cell.stationName });
         }
     });
 
@@ -788,9 +880,16 @@ function buildStationGraph() {
             const [x, y] = k.split(',').map(Number);
             const nb = [];
             exits.forEach(d => {
+                if (c.direction != null && c.direction !== d) return;
                 const off = dirOffsets[d]; if (!off) return;
                 const nk = `${x+off.x},${y+off.y}`;
-                if (cellsMap.has(nk)) { const nc = cellsMap.get(nk); if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) nb.push(nk); }
+                if (cellsMap.has(nk)) {
+                    const nc = cellsMap.get(nk);
+                    if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) {
+                        if (nc.direction != null && nc.direction === (d+4)%8) return;
+                        nb.push(nk);
+                    }
+                }
             });
             return nb;
         };
@@ -856,7 +955,18 @@ function getTrackCellsBetweenStations(fromKey, toKey, color) {
         const c = colorCells.get(k); if (!c || c.type === 0) return [];
         const exits = TRACK_EXITS[c.type] || [];
         const [x, y] = k.split(',').map(Number); const nb = [];
-        exits.forEach(d => { const off = dirOffsets[d]; if (!off) return; const nk = `${x+off.x},${y+off.y}`; if (colorCells.has(nk)) { const nc = colorCells.get(nk); if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) nb.push(nk); } });
+        exits.forEach(d => {
+            if (c.direction != null && c.direction !== d) return;
+            const off = dirOffsets[d]; if (!off) return; 
+            const nk = `${x+off.x},${y+off.y}`; 
+            if (colorCells.has(nk)) {
+                const nc = colorCells.get(nk); 
+                if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) {
+                    if (nc.direction != null && nc.direction === (d+4)%8) return;
+                    nb.push(nk);
+                }
+            } 
+        });
         return nb;
     };
 
