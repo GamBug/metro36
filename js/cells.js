@@ -19,7 +19,7 @@ function updateCellDOM(cell, layers, hasStation, stationName) {
         const layer = layers[color];
         const trackDef = TRACK_TYPES[layer.type];
         if (trackDef && trackDef.html) {
-            svgInner += `<g style="color:${color}">${trackDef.html}</g>`;
+            svgInner += `<g class="track-layer" style="color:${color}" data-color="${color}">${trackDef.html}</g>`;
             if (layer.direction != null) {
                 let angle = 0;
                 switch(layer.direction) {

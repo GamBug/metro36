@@ -15,19 +15,25 @@ function commitLine() {
                 transferStartKey = key;
                 gridData.get(key).domNode.classList.add('station-selected');
             } else if (transferStartKey !== key) {
-                saveState();
-                connections.push({ from: transferStartKey, to: key });
-                clearGraphCache(); // Invalidate route cache when transfer added
-                const startCell = gridData.get(transferStartKey);
-                const endCell = gridData.get(key);
-                if (startCell && endCell && startCell.stationName && !endCell.stationName) {
-                    endCell.stationName = startCell.stationName;
-                    updateCellDOM(endCell.domNode, endCell.layers, endCell.hasStation, endCell.stationName);
+                // Check for duplicate connections
+                const isDuplicate = connections.some(c =>
+                    (c.from === transferStartKey && c.to === key) ||
+                    (c.from === key && c.to === transferStartKey));
+                if (!isDuplicate) {
+                    saveState();
+                    connections.push({ from: transferStartKey, to: key });
+                    clearGraphCache();
+                    const startCell = gridData.get(transferStartKey);
+                    const endCell = gridData.get(key);
+                    if (startCell && endCell && startCell.stationName && !endCell.stationName) {
+                        endCell.stationName = startCell.stationName;
+                        updateCellDOM(endCell.domNode, endCell.layers, endCell.hasStation, endCell.stationName);
+                    }
+                    renderConnections();
+                    if (typeof updateTrackTable === 'function') updateTrackTable();
                 }
                 if (gridData.has(transferStartKey)) gridData.get(transferStartKey).domNode.classList.remove('station-selected');
                 transferStartKey = null;
-                renderConnections();
-                if (typeof updateTrackTable === 'function') updateTrackTable();
             }
         } else {
             if (transferStartKey && gridData.has(transferStartKey)) gridData.get(transferStartKey).domNode.classList.remove('station-selected');
@@ -79,6 +85,8 @@ function commitLine() {
                 const cell = gridData.get(key);
                 cell.domNode.remove();
                 gridData.delete(key);
+                // Clean up connections referencing this cell
+                connections = connections.filter(conn => conn.from !== key && conn.to !== key);
                 affectedKeys.add(key);
             }
         } else if (isStationTool) {
@@ -137,6 +145,7 @@ function commitLine() {
         }
     });
 
+    clearGraphCache();
     if (typeof updateTrackTable === 'function') updateTrackTable();
 }
 

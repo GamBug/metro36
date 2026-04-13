@@ -3,7 +3,7 @@
 
 // Core Application State
 let selectedColor = METRO_COLORS[0];
-let selectedTrackType = 1;
+let selectedTrackType = 29; // Default to Move (pan) tool
 
 // gridData: key="x,y", value={ layers:{color:{type,isAuto}}, hasStation, stationName, domNode }
 const gridData = new Map();

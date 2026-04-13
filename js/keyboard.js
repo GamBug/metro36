@@ -3,10 +3,12 @@
 
 window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const isGuest = sessionStorage.getItem('metro_role') === 'guest';
     const key = e.key.toLowerCase();
     const isCtrl = e.ctrlKey || e.metaKey;
     let newIndex = -1;
     if (isCtrl) {
+        if (isGuest) return; // Block all Ctrl shortcuts for guests
         if (key === 's') { e.preventDefault(); saveMapToFile(); }
         else if (key === 'o') { e.preventDefault(); document.getElementById('loadMapFile').click(); }
         else if (key === 'e') { e.preventDefault(); clearBoard(); }
@@ -26,6 +28,8 @@ window.addEventListener('keydown', (e) => {
         if (findBtn) findBtn.click();
         return;
     }
+    // Block all tool shortcuts for guests
+    if (isGuest) return;
     if (key === 'e') newIndex = TRACK_TYPES.findIndex(t => t.type === 'empty');
     else if (key === 'm') newIndex = TRACK_TYPES.findIndex(t => t.type === 'auto');
     else if (key === 's') newIndex = TRACK_TYPES.findIndex(t => t.type === 'station');

@@ -47,5 +47,6 @@ function restoreState(stateObj) {
         gridData.set(key, { layers: val.layers, hasStation: val.hasStation, stationName: val.stationName, domNode });
     });
     renderConnections();
+    clearGraphCache();
     if (typeof updateTrackTable === 'function') updateTrackTable();
 }

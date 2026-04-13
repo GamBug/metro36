@@ -111,8 +111,10 @@ function buildStationGraph() {
                         if (!graph.has(sk)) graph.set(sk, []);
                         if (!graph.get(sk).some(e => e.to === nk && e.color === color))
                             graph.get(sk).push({ to: nk, color, viaTransfer: false });
+                        // Stop at intermediate stations — don't expand through them
+                    } else {
+                        queue.push(nk);
                     }
-                    queue.push(nk);
                 }
             }
         });
@@ -135,10 +137,11 @@ function findRoute(fromKey, toKey) {
     const graph = getCachedGraph();
     if (!graph.has(fromKey) || !graph.has(toKey)) return null;
     
-    // Weighted pathfinding with priority queue (simulated via sorting)
-    // Cost: regular traversal = 1, transfer = 0 (free, to encourage transfers)
+    // Dijkstra with processed set
+    // Cost: regular traversal = 1, transfer = 2 (penalty to discourage unnecessary transfers)
     const visited = new Map();
     const distances = new Map();
+    const processed = new Set();
     const queue = [];
     
     distances.set(fromKey, 0);
@@ -146,9 +149,11 @@ function findRoute(fromKey, toKey) {
     visited.set(fromKey, { prev: null, edgeColor: null, viaTransfer: false });
     
     while (queue.length > 0) {
-        // Sort by cost (Dijkstra-like approach with manual queue management)
         queue.sort((a, b) => a.cost - b.cost);
         const { node: curr, cost: currCost } = queue.shift();
+        
+        if (processed.has(curr)) continue;
+        processed.add(curr);
         
         if (curr === toKey) {
             const path = []; let node = toKey;
@@ -157,8 +162,8 @@ function findRoute(fromKey, toKey) {
         }
         
         for (const edge of (graph.get(curr) || [])) {
-            // Cost = 0 for transfers, 1 for regular travel
-            const edgeCost = edge.viaTransfer ? 0 : 1;
+            if (processed.has(edge.to)) continue;
+            const edgeCost = edge.viaTransfer ? 2 : 1;
             const newCost = currCost + edgeCost;
             
             if (!distances.has(edge.to) || newCost < distances.get(edge.to)) {
@@ -205,22 +210,64 @@ function getTrackCellsBetweenStations(fromKey, toKey, color) {
     cells.add(fromKey); cells.add(toKey); return cells;
 }
 
+function highlightLayer(cellNode, color) {
+    if (!cellNode || !color) return;
+    cellNode.querySelectorAll(`.track-layer[data-color="${color}"]`).forEach(g => {
+        g.classList.add('layer-highlight');
+    });
+}
+
 function highlightRoute(path) {
     clearRouteHighlight();
+    const canvas = document.getElementById('grid-canvas');
+    if (canvas) canvas.classList.add('has-route-active');
+
     for (let i = 0; i < path.length; i++) {
         const step = path[i]; const cell = gridData.get(step.stationKey);
-        if (cell && cell.domNode) { cell.domNode.classList.add('route-highlight'); routeHighlightedKeys.push(step.stationKey); }
+        if (cell && cell.domNode) {
+            cell.domNode.classList.add('route-highlight');
+            routeHighlightedKeys.push(step.stationKey);
+            
+            // Highlight the layer used to reach this station
+            if (step.edgeColor) highlightLayer(cell.domNode, step.edgeColor);
+            
+            // If there's a next step on the same line, highlight that too
+            if (i + 1 < path.length && !path[i+1].viaTransfer) {
+                highlightLayer(cell.domNode, path[i+1].edgeColor);
+            }
+        }
+        
+        if (i > 0 && step.viaTransfer) {
+            const connKey = `conn-${path[i-1].stationKey}-${step.stationKey}`;
+            document.querySelectorAll(`.${CSS.escape(connKey)}`).forEach(line => {
+                line.classList.add('route-highlight-line');
+            });
+        }
         if (i > 0 && !step.viaTransfer && step.edgeColor) {
             getTrackCellsBetweenStations(path[i-1].stationKey, step.stationKey, step.edgeColor).forEach(tk => {
                 const tc = gridData.get(tk);
-                if (tc && tc.domNode) { tc.domNode.classList.add('route-highlight'); routeHighlightedKeys.push(tk); }
+                if (tc && tc.domNode) {
+                    tc.domNode.classList.add('route-highlight');
+                    highlightLayer(tc.domNode, step.edgeColor);
+                    routeHighlightedKeys.push(tk);
+                }
             });
         }
     }
 }
 
 function clearRouteHighlight() {
-    routeHighlightedKeys.forEach(key => { const cell = gridData.get(key); if (cell && cell.domNode) cell.domNode.classList.remove('route-highlight'); });
+    const canvas = document.getElementById('grid-canvas');
+    if (canvas) canvas.classList.remove('has-route-active');
+
+    routeHighlightedKeys.forEach(key => {
+        const cell = gridData.get(key);
+        if (cell && cell.domNode) {
+            cell.domNode.classList.remove('route-highlight');
+            cell.domNode.querySelectorAll('.layer-highlight').forEach(l => l.classList.remove('layer-highlight'));
+        }
+    });
+    document.querySelectorAll('.route-highlight-line').forEach(line => line.classList.remove('route-highlight-line'));
     routeHighlightedKeys = [];
 }
 
@@ -267,8 +314,20 @@ function renderRouteResult(path) {
     return html;
 }
 
+function pickRandomStations() {
+    const stations = getAllStations();
+    if (stations.length < 2) return null;
+    
+    // Pick two distinct random stations using modular arithmetic (no loop)
+    const idx1 = Math.floor(Math.random() * stations.length);
+    const idx2 = (idx1 + 1 + Math.floor(Math.random() * (stations.length - 1))) % stations.length;
+    
+    return { from: stations[idx1].key, to: stations[idx2].key };
+}
+
 function initRouteFinder() {
     const findBtn = document.getElementById('findRouteBtn');
+    const randomBtn = document.getElementById('randomRouteBtn');
     const clearBtn = document.getElementById('clearRouteBtn');
     const swapBtn = document.getElementById('routeSwapBtn');
     const resultDiv = document.getElementById('routeResult');
@@ -283,19 +342,32 @@ function initRouteFinder() {
         document.querySelectorAll('.btn-pick').forEach(b => b.classList.remove('active'));
         viewport.classList.remove('picking-route');
         if (pickingRouteTarget) {
-            document.getElementById(pickingRouteTarget === 'from' ? 'pickFromBtn' : 'pickToBtn').classList.add('active');
+            const btnId = pickingRouteTarget === 'from' ? 'pickFromBtn' : 'pickToBtn';
+            const btn = document.getElementById(btnId);
+            if (btn) btn.classList.add('active');
             viewport.classList.add('picking-route');
         }
     }
 
-    pickFromBtn.addEventListener('click', () => {
+    if (pickFromBtn) pickFromBtn.addEventListener('click', () => {
         pickingRouteTarget = pickingRouteTarget === 'from' ? null : 'from';
         updatePickModeUI();
     });
 
-    pickToBtn.addEventListener('click', () => {
+    if (pickToBtn) pickToBtn.addEventListener('click', () => {
         pickingRouteTarget = pickingRouteTarget === 'to' ? null : 'to';
         updatePickModeUI();
+    });
+
+    if (randomBtn) randomBtn.addEventListener('click', () => {
+        const picked = pickRandomStations();
+        if (!picked) {
+            resultDiv.innerHTML = '<div class="route-error">Cần ít nhất 2 ga để dùng chức năng này.</div>';
+            return;
+        }
+        fromSelect.value = picked.from;
+        toSelect.value = picked.to;
+        findBtn.click(); // Trigger search immediately
     });
 
     findBtn.addEventListener('click', () => {
@@ -306,6 +378,6 @@ function initRouteFinder() {
         if (!path) { resultDiv.innerHTML = '<div class="route-error">Không tìm thấy đường đi giữa hai trạm này.</div>'; clearRouteHighlight(); clearBtn.style.display = 'none'; return; }
         resultDiv.innerHTML = renderRouteResult(path); highlightRoute(path); clearBtn.style.display = 'block';
     });
-    clearBtn.addEventListener('click', () => { clearRouteHighlight(); resultDiv.innerHTML = ''; clearBtn.style.display = 'none'; });
-    swapBtn.addEventListener('click', () => { const tmp = fromSelect.value; fromSelect.value = toSelect.value; toSelect.value = tmp; });
+    if (clearBtn) clearBtn.addEventListener('click', () => { clearRouteHighlight(); resultDiv.innerHTML = ''; clearBtn.style.display = 'none'; });
+    if (swapBtn) swapBtn.addEventListener('click', () => { const tmp = fromSelect.value; fromSelect.value = toSelect.value; toSelect.value = tmp; });
 }
