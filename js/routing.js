@@ -17,6 +17,7 @@ function getGridStateHash() {
     connections.forEach(conn => {
         hash += `conn:${conn.from}-${conn.to};`;
     });
+    hash += `exc:${Array.from(excludedColors).sort().join(',')}`;
     return hash;
 }
 
@@ -55,12 +56,25 @@ function updateRouteDropdowns() {
     const prevFrom = fromSelect.value, prevTo = toSelect.value;
     const stations = getAllStations();
     const build = (sel) => {
-        let h = '<option value="">-- Select Station --</option>';
-        stations.forEach(st => { h += `<option value="${st.key}"${st.key === sel ? ' selected' : ''}>${st.name} (${colorNames[st.color] || ''})</option>`; });
+        let h = '<option value="" style="color:#94a3b8">-- Select Station --</option>';
+        stations.forEach(st => { 
+            h += `<option value="${st.key}" style="color:${st.color}; font-weight:600;"${st.key === sel ? ' selected' : ''}>${st.name}</option>`; 
+        });
         return h;
     };
     fromSelect.innerHTML = build(prevFrom);
     toSelect.innerHTML = build(prevTo);
+    syncSelectColor(fromSelect);
+    syncSelectColor(toSelect);
+}
+
+function syncSelectColor(select) {
+    const option = select.options[select.selectedIndex];
+    if (option && option.value) {
+        select.style.color = option.style.color;
+    } else {
+        select.style.color = '#94a3b8';
+    }
 }
 
 function buildStationGraph() {
@@ -71,6 +85,7 @@ function buildStationGraph() {
     const byColor = new Map();
     gridData.forEach((cell, key) => {
         for (const color in cell.layers) {
+            if (excludedColors.has(color)) continue;
             if (!byColor.has(color)) byColor.set(color, new Map());
             byColor.get(color).set(key, { type: cell.layers[color].type, direction: cell.layers[color].direction, hasStation: cell.hasStation, stationName: cell.stationName });
         }
@@ -222,6 +237,35 @@ function highlightRoute(path) {
     const canvas = document.getElementById('grid-canvas');
     if (canvas) canvas.classList.add('has-route-active');
 
+    if (path.length > 0) {
+        const startStep = path[0];
+        const endStep = path[path.length - 1];
+        
+        const addHighlight = (step, type, emoji) => {
+            const [gx, gy] = step.stationKey.split(',').map(Number);
+            const overlay = document.createElement('div');
+            overlay.className = `route-endpoint-overlay ${type}`;
+            overlay.style.width = `${CELL_SIZE * 2}px`;
+            overlay.style.height = `${CELL_SIZE * 2}px`;
+            overlay.style.left = `${(gx - 0.5) * CELL_SIZE}px`;
+            overlay.style.top = `${(gy - 0.5) * CELL_SIZE}px`;
+            
+            if (emoji) {
+                const emojiEl = document.createElement('div');
+                emojiEl.className = 'route-endpoint-emoji';
+                emojiEl.textContent = emoji;
+                overlay.appendChild(emojiEl);
+            }
+            
+            canvas.appendChild(overlay);
+        };
+        
+        addHighlight(startStep, 'start');
+        if (startStep.stationKey !== endStep.stationKey) {
+            addHighlight(endStep, 'end', '🏁');
+        }
+    }
+
     for (let i = 0; i < path.length; i++) {
         const step = path[i]; const cell = gridData.get(step.stationKey);
         if (cell && cell.domNode) {
@@ -259,6 +303,8 @@ function highlightRoute(path) {
 function clearRouteHighlight() {
     const canvas = document.getElementById('grid-canvas');
     if (canvas) canvas.classList.remove('has-route-active');
+
+    document.querySelectorAll('.route-endpoint-overlay').forEach(el => el.remove());
 
     routeHighlightedKeys.forEach(key => {
         const cell = gridData.get(key);
@@ -367,6 +413,8 @@ function initRouteFinder() {
         }
         fromSelect.value = picked.from;
         toSelect.value = picked.to;
+        syncSelectColor(fromSelect);
+        syncSelectColor(toSelect);
         findBtn.click(); // Trigger search immediately
     });
 
@@ -379,5 +427,49 @@ function initRouteFinder() {
         resultDiv.innerHTML = renderRouteResult(path); highlightRoute(path); clearBtn.style.display = 'block';
     });
     if (clearBtn) clearBtn.addEventListener('click', () => { clearRouteHighlight(); resultDiv.innerHTML = ''; clearBtn.style.display = 'none'; });
-    if (swapBtn) swapBtn.addEventListener('click', () => { const tmp = fromSelect.value; fromSelect.value = toSelect.value; toSelect.value = tmp; });
+    if (swapBtn) swapBtn.addEventListener('click', () => { 
+        const tmp = fromSelect.value; 
+        fromSelect.value = toSelect.value; 
+        toSelect.value = tmp;
+        syncSelectColor(fromSelect);
+        syncSelectColor(toSelect);
+    });
+
+    fromSelect.addEventListener('change', () => syncSelectColor(fromSelect));
+    toSelect.addEventListener('change', () => syncSelectColor(toSelect));
+    
+    initColorExcludePalette();
+}
+
+function initColorExcludePalette() {
+    const palette = document.getElementById('routeExcludePalette');
+    if (!palette) return;
+
+    function render() {
+        palette.innerHTML = '';
+        METRO_COLORS.forEach(color => {
+            const btn = document.createElement('div');
+            btn.className = 'color-exclude-btn';
+            btn.style.backgroundColor = color;
+            const isExcluded = excludedColors.has(color);
+            if (isExcluded) {
+                btn.classList.add('excluded');
+            } else {
+                btn.classList.add('active');
+            }
+            btn.title = isExcluded ? `Include ${colorNames[color]} Line` : `Exclude ${colorNames[color]} Line`;
+            
+            btn.addEventListener('click', () => {
+                if (excludedColors.has(color)) {
+                    excludedColors.delete(color);
+                } else {
+                    excludedColors.add(color);
+                }
+                clearGraphCache();
+                render();
+            });
+            palette.appendChild(btn);
+        });
+    }
+    render();
 }

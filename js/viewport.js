@@ -15,6 +15,7 @@ function initViewport() {
                 const sel = document.getElementById(selectId);
                 if (Array.from(sel.options).some(opt => opt.value === key)) {
                     sel.value = key;
+                    if (typeof syncSelectColor === 'function') syncSelectColor(sel);
                 }
                 pickingRouteTarget = null;
                 viewport.classList.remove('picking-route');

@@ -43,6 +43,7 @@ window.addEventListener('keydown', (e) => {
         selectedTrackType = newIndex;
         const trackBtns = document.querySelectorAll('.track-btn');
         trackBtns.forEach(btn => btn.classList.remove('active'));
-        if (trackBtns[newIndex]) trackBtns[newIndex].classList.add('active');
+        const targetBtn = document.querySelector(`.track-btn[data-track-index="${newIndex}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
     }
 });

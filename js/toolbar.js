@@ -25,14 +25,17 @@ function initToolbar() {
     const groups = {
         tools: { title: 'Tools', items: [] },
         basic: { title: 'Basic Tracks', items: [] },
-        diag: { title: 'Diagonals & Corners', items: [] },
+        diag: { title: 'Diagonals', items: [] },
         complex: { title: 'Intersections', items: [] }
     };
 
     TRACK_TYPES.forEach((track, index) => {
+        // Hide corner fill types from the toolbar (they still work in saved maps)
+        if (track.type.startsWith('fill')) return;
+
         let cat = 'basic';
         if (['empty', 'auto', 'station', 'transfer', 'pan', 'oneway'].includes(track.type)) cat = 'tools';
-        else if (track.type.startsWith('diag') || track.type.startsWith('fill') || track.type.startsWith('straight-diag')) cat = 'diag';
+        else if (track.type.startsWith('diag') || track.type.startsWith('straight-diag')) cat = 'diag';
         else if (track.type.startsWith('cross') || track.type.startsWith('t-')) cat = 'complex';
         
         groups[cat].items.push({ track, index });
@@ -57,6 +60,7 @@ function initToolbar() {
             const btn = document.createElement('div');
             btn.className = `track-btn ${index === selectedTrackType ? 'active' : ''}`;
             btn.title = track.type;
+            btn.setAttribute('data-track-index', index);
 
             if (track.type === 'empty') {
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"/><line x1="16" y1="15" x2="21" y2="20"/></svg> Eraser (E)`;
