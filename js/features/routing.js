@@ -148,47 +148,72 @@ function buildStationGraph() {
 }
 
 function findRoute(fromKey, toKey) {
-    // Use cached graph for efficiency
     const graph = getCachedGraph();
     if (!graph.has(fromKey) || !graph.has(toKey)) return null;
-    
-    // Dijkstra with processed set
-    // Cost: regular traversal = 1, transfer = 2 (penalty to discourage unnecessary transfers)
+
+    const [targetX, targetY] = toKey.split(',').map(Number);
+
+    // Octile Distance Heuristic: h = |a-b| + sqrt(2) * min(a,b)
+    function getHeuristic(key) {
+        const [x, y] = key.split(',').map(Number);
+        const a = Math.abs(x - targetX);
+        const b = Math.abs(y - targetY);
+        return Math.abs(a - b) + (Math.SQRT2) * Math.min(a, b);
+    }
+
+    const openSet = [fromKey];
+    const closedSet = new Set();
     const visited = new Map();
-    const distances = new Map();
-    const processed = new Set();
-    const queue = [];
-    
-    distances.set(fromKey, 0);
-    queue.push({ node: fromKey, cost: 0 });
+    const gScore = new Map();
+    const fScore = new Map();
+
+    gScore.set(fromKey, 0);
+    fScore.set(fromKey, getHeuristic(fromKey));
     visited.set(fromKey, { prev: null, edgeColor: null, viaTransfer: false });
-    
-    while (queue.length > 0) {
-        queue.sort((a, b) => a.cost - b.cost);
-        const { node: curr, cost: currCost } = queue.shift();
-        
-        if (processed.has(curr)) continue;
-        processed.add(curr);
-        
+
+    while (openSet.length > 0) {
+        // Sort openSet by fScore (Min-priority queue behavior)
+        openSet.sort((a, b) => fScore.get(a) - fScore.get(b));
+        const curr = openSet.shift();
+
+        // Skip if already fully processed
+        if (closedSet.has(curr)) continue;
+        closedSet.add(curr);
+
         if (curr === toKey) {
-            const path = []; let node = toKey;
-            while (node !== null) { const info = visited.get(node); path.unshift({ stationKey: node, edgeColor: info.edgeColor, viaTransfer: info.viaTransfer }); node = info.prev; }
+            const path = [];
+            let node = toKey;
+            while (node !== null) {
+                const info = visited.get(node);
+                path.unshift({ 
+                    stationKey: node, 
+                    edgeColor: info.edgeColor, 
+                    viaTransfer: info.viaTransfer 
+                });
+                node = info.prev;
+            }
             return path;
         }
-        
-        for (const edge of (graph.get(curr) || [])) {
-            if (processed.has(edge.to)) continue;
-            const edgeCost = edge.viaTransfer ? 2 : 1;
-            const newCost = currCost + edgeCost;
-            
-            if (!distances.has(edge.to) || newCost < distances.get(edge.to)) {
-                distances.set(edge.to, newCost);
+
+        const edges = graph.get(curr) || [];
+        for (const edge of edges) {
+            if (closedSet.has(edge.to)) continue;
+            // Cost: transfer = 2 (penalty), regular track = 1
+            const weight = edge.viaTransfer ? 2 : 1;
+            const tentativeGScore = gScore.get(curr) + weight;
+
+            if (!gScore.has(edge.to) || tentativeGScore < gScore.get(edge.to)) {
                 visited.set(edge.to, { prev: curr, edgeColor: edge.color, viaTransfer: edge.viaTransfer });
-                queue.push({ node: edge.to, cost: newCost });
+                gScore.set(edge.to, tentativeGScore);
+                fScore.set(edge.to, tentativeGScore + getHeuristic(edge.to));
+                
+                if (!openSet.includes(edge.to)) {
+                    openSet.push(edge.to);
+                }
             }
         }
     }
-    
+
     return null;
 }
 
@@ -260,7 +285,7 @@ function highlightRoute(path) {
             canvas.appendChild(overlay);
         };
         
-        addHighlight(startStep, 'start');
+        addHighlight(startStep, 'start', '🚂');
         if (startStep.stationKey !== endStep.stationKey) {
             addHighlight(endStep, 'end', '🏁');
         }
@@ -350,9 +375,13 @@ function renderRouteResult(path) {
         html += `<div class="route-leg"><div class="route-leg-header"><span class="route-leg-color" style="background:${leg.color};box-shadow:0 0 6px ${leg.color};"></span>${cName} Line</div><div class="route-leg-stations">`;
         leg.stations.forEach((st, si) => {
             let cls = 'route-stop';
-            if (si === 0 && idx === 0) cls += ' route-stop-first';
+            let displayName = st;
+            if (si === 0 && idx === 0) {
+                cls += ' route-stop-first';
+                displayName = '🚂 ' + st;
+            }
             if (si === leg.stations.length - 1 && idx === legs.length - 1) cls += ' route-stop-last';
-            html += `<div class="${cls}">${st}</div>`;
+            html += `<div class="${cls}">${displayName}</div>`;
         });
         html += '</div></div>';
     });

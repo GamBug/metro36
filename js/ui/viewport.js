@@ -2,6 +2,7 @@
 // Dependencies: constants.js, state.js, cells.js, drawing.js (for commitLine), preview.js (for updatePreview)
 
 function initViewport() {
+    initRefImage();
     viewport.addEventListener('contextmenu', e => e.preventDefault());
     let isPanningModeForRef = false;
 
@@ -100,4 +101,32 @@ function getDefaultAutoType(dx, dy) {
 function updateRefTransform() {
     refImage.style.transform = `translate(${refImgX}px, ${refImgY}px) scale(${refImgScale})`;
     refImage.style.opacity = refImgOpacity;
+}
+
+// ======= REFERENCE IMAGE =======
+function initRefImage() {
+    const uploadInput = document.getElementById('refUpload');
+    if (uploadInput) {
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { refImage.src = ev.target.result; refImage.style.display = 'block'; updateRefTransform(); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const opacityInput = document.getElementById('refOpacity');
+    if (opacityInput) {
+        opacityInput.addEventListener('input', (e) => { refImgOpacity = e.target.value / 100; refImage.style.opacity = refImgOpacity; });
+    }
+
+    const scaleInput = document.getElementById('refScale');
+    if (scaleInput) {
+        scaleInput.addEventListener('input', (e) => { refImgScale = e.target.value / 100; updateRefTransform(); });
+    }
+
+    const toggleMove = document.getElementById('toggleMoveRef');
+    if (toggleMove) {
+        toggleMove.addEventListener('click', (e) => { isMoveRefMode = !isMoveRefMode; e.target.classList.toggle('active', isMoveRefMode); });
+    }
 }

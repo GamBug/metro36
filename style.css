@@ -447,6 +447,31 @@ p.desc {
     color: var(--border-accent);
 }
 
+.btn-logout {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #f97316;
+    background: transparent;
+    color: #f97316;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-logout:hover {
+    border-color: #ea580c;
+    background: rgba(249, 115, 22, 0.1);
+    color: #ea580c;
+    transform: translateY(-1px);
+}
+
+.btn-logout:active {
+    transform: translateY(1px);
+}
+
 /* ========== GRID VIEWPORT ========== */
 .grid-viewport {
     flex-grow: 1;

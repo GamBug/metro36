@@ -29,6 +29,7 @@
             </div>
             <button id="clearBtn" class="btn-clear" title="Ctrl+E">🗑️ Clear (Ctrl+E)</button>
             <button id="themeToggle" class="theme-toggle" title="Toggle Dark/Light Mode">🌙</button>
+            <button id="logoutBtn" class="btn-logout" title="Back to Login">🚪 Logout</button>
         </div>
     </div>
 
@@ -62,7 +63,7 @@
             <div class="tool-section route-finder-section">
                 <h3>🚇 Find Route</h3>
                 <div class="route-form">
-                    <div class="route-field">
+                    <div class="route-field admin-only">
                         <label>Exclude Lines</label>
                         <div class="color-exclude-palette" id="routeExcludePalette"></div>
                     </div>
@@ -197,21 +198,41 @@
     </svg>
 
     <!-- Modular Scripts (in dependency order) -->
-    <script src="js/constants.js"></script>
-    <script src="js/state.js"></script>
-    <script src="js/cells.js"></script>
-    <script src="js/history.js"></script>
-    <script src="js/viewport.js"></script>
-    <script src="js/preview.js"></script>
-    <script src="js/drawing.js"></script>
-    <script src="js/connections.js"></script>
-    <script src="js/tracktable.js"></script>
-    <script src="js/routing.js"></script>
-    <script src="js/fileio.js"></script>
-    <script src="js/toolbar.js"></script>
-    <script src="js/keyboard.js"></script>
-    <script src="js/refimage.js"></script>
+    <!-- Core Dependencies -->
+    <script src="js/core/constants.js"></script>
+    <script src="js/core/state.js"></script>
+    
+    <!-- UI Modules -->
+    <script src="js/ui/cells.js"></script>
+    <script src="js/ui/viewport.js"></script>
+    <script src="js/ui/toolbar.js"></script>
+    
+    <!-- Feature Modules -->
+    <script src="js/features/history.js"></script>
+    <script src="js/features/drawing.js"></script>
+    <script src="js/features/connections.js"></script>
+    <script src="js/features/tracktable.js"></script>
+    <script src="js/features/routing.js"></script>
+    
+    <!-- IO Modules -->
+    <script src="js/io/fileio.js"></script>
+    
+    <!-- Input Modules -->
+    <script src="js/input/keyboard.js"></script>
+    
+    <!-- App Entry Point -->
     <script src="js/main.js"></script>
+    
+    <!-- Logout Handler -->
+    <script>
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            // Clear session storage
+            sessionStorage.removeItem('metro_auth');
+            sessionStorage.removeItem('metro_role');
+            // Redirect to login page
+            window.location.replace('index.html');
+        });
+    </script>
 </body>
 
 </html>

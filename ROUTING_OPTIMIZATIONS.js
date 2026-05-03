@@ -220,7 +220,87 @@ function findRoute_Dijkstra(fromKey, toKey) {
     return path;
 }
 
-// ===== OPTION 4: CACHE LAYER (Boost untuk bất kỳ option) =====
+// ===== OPTION 4: A* SEARCH WITH OCTILE HEURISTIC (Optimal & Fast) =====
+/**
+ * A* Algorithm với Heuristic Octile Distance
+ * 
+ * Heuristic: h = |a-b| + sqrt(2) * min(a,b)
+ * (a, b là chênh lệch tọa độ x, y)
+ * 
+ * Ưu điểm:
+ * - ✅ Nhanh hơn Dijkstra rất nhiều (chỉ duyệt các node hướng về đích)
+ * - ✅ Tìm đường tối ưu về mặt hình học
+ * - ✅ Phù hợp với bản đồ dạng grid
+ */
+function findRoute_AStar(fromKey, toKey) {
+    const graph = getCachedGraph();
+    if (!graph.has(fromKey) || !graph.has(toKey)) return null;
+
+    const [targetX, targetY] = toKey.split(',').map(Number);
+
+    // Octile Distance Heuristic
+    function getHeuristic(key) {
+        const [x, y] = key.split(',').map(Number);
+        const a = Math.abs(x - targetX);
+        const b = Math.abs(y - targetY);
+        // h = |a-b| + sqrt(2) * min(a,b)
+        return Math.abs(a - b) + Math.sqrt(2) * Math.min(a, b);
+    }
+
+    const openSet = [fromKey];
+    const cameFrom = new Map();
+    
+    const gScore = new Map(); // Chi phí từ start đến node hiện tại
+    gScore.set(fromKey, 0);
+
+    const fScore = new Map(); // gScore + heuristic
+    fScore.set(fromKey, getHeuristic(fromKey));
+
+    const edgeDetails = new Map();
+
+    while (openSet.length > 0) {
+        // Chọn node có fScore thấp nhất
+        openSet.sort((a, b) => fScore.get(a) - fScore.get(b));
+        const curr = openSet.shift();
+
+        if (curr === toKey) {
+            // Reconstruct path
+            const path = [];
+            let node = toKey;
+            while (node !== null) {
+                const info = edgeDetails.get(node) || { color: null, viaTransfer: false };
+                path.unshift({ 
+                    stationKey: node, 
+                    edgeColor: info.color, 
+                    viaTransfer: info.viaTransfer 
+                });
+                node = cameFrom.get(node) || null;
+            }
+            return path;
+        }
+
+        for (const edge of (graph.get(curr) || [])) {
+            // Trọng số: Transfer = 2 (để hạn chế đổi tuyến), Track = 1
+            const weight = edge.viaTransfer ? 2 : 1;
+            const tentativeGScore = gScore.get(curr) + weight;
+
+            if (!gScore.has(edge.to) || tentativeGScore < gScore.get(edge.to)) {
+                cameFrom.set(edge.to, curr);
+                edgeDetails.set(edge.to, { color: edge.color, viaTransfer: edge.viaTransfer });
+                gScore.set(edge.to, tentativeGScore);
+                fScore.set(edge.to, tentativeGScore + getHeuristic(edge.to));
+                
+                if (!openSet.includes(edge.to)) {
+                    openSet.push(edge.to);
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+// ===== OPTION 5: CACHE LAYER (Boost cho bất kỳ option nào) =====
 /**
  * Caching layer - giảm rebuild graph
  * Tiết kiệm 70-80% thời gian khi user tìm multiple routes
@@ -290,14 +370,19 @@ function clearGraphCache() {
  *     // ... BFS code
  * }
  * 
- * // OPTION 3: Full upgrade to Dijkstra
+ * // OPTION 4: Full upgrade to Dijkstra
  * function findRoute(fromKey, toKey) {
  *     return findRoute_Dijkstra(fromKey, toKey);
  * }
  * 
- * // OPTION 4: Combined best - Dijkstra + Cache
+ * // OPTION 5: A* Search (Fastest)
  * function findRoute(fromKey, toKey) {
- *     return findRoute_Dijkstra_WithCache(fromKey, toKey);
+ *     return findRoute_AStar(fromKey, toKey);
+ * }
+ * 
+ * // OPTION 6: Combined best - A* + Cache
+ * function findRoute(fromKey, toKey) {
+ *     return findRoute_AStar_WithCache(fromKey, toKey);
  * }
  */
 

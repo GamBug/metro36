@@ -1,10 +1,36 @@
 # Project Structure - Metro Architect
 
-Your script.js has been split into multiple specialized modules for better maintainability and organization.
+Your script.js has been split into multiple specialized modules organized by category for better maintainability and organization.
 
-## Module Organization
+## Directory Organization
 
-### Core Modules
+```
+js/
+├── core/              ← Core dependencies
+│   ├── constants.js
+│   └── state.js
+├── ui/                ← UI-related modules
+│   ├── cells.js
+│   ├── viewport.js
+│   ├── preview.js
+│   ├── toolbar.js
+│   └── refimage.js
+├── features/          ← Feature modules
+│   ├── history.js
+│   ├── drawing.js
+│   ├── connections.js
+│   ├── tracktable.js
+│   └── routing.js
+├── io/                ← Input/Output
+│   └── fileio.js
+├── input/             ← Input handling
+│   └── keyboard.js
+└── main.js            ← Application entry point
+```
+
+## Module Details
+
+### Core Modules (js/core/)
 
 1. **constants.js** (36 lines)
    - All configuration constants
@@ -16,65 +42,75 @@ Your script.js has been split into multiple specialized modules for better maint
    - Selection state, grid data, viewport state, reference image state
    - Depends on: constants.js
 
+### UI Modules (js/ui/)
+
 3. **cells.js** (50 lines)
    - Cell DOM creation and updates
    - Functions: createCellDOM(), updateCellDOM(), cellFirstColor()
    - Depends on: constants.js, state.js
 
-4. **history.js** (45 lines)
-   - Undo/Redo system
-   - Functions: saveState(), undo(), redo(), restoreState(), snapshotCell()
-   - Depends on: cells.js, state.js
-
-5. **viewport.js** (80 lines)
+4. **viewport.js** (80 lines)
    - Viewport and camera management
    - Functions: initViewport(), updateTransform(), getGridCoords(), getDefaultAutoType(), updateRefTransform()
-   - Depends on: state.js, constants.js, drawing.js (commitLine)
+   - Depends on: state.js, constants.js, drawing.js (commitLine), preview.js (updatePreview)
 
-6. **preview.js** (25 lines)
+5. **preview.js** (25 lines)
    - Preview rendering while drawing
    - Functions: updatePreview()
    - Depends on: cells.js, state.js, viewport.js, drawing.js
 
-7. **drawing.js** (115 lines)
+6. **toolbar.js** (70 lines)
+   - Toolbar initialization
+   - Functions: initToolbar()
+   - Depends on: state.js, constants.js
+
+7. **refimage.js** (20 lines)
+   - Reference image management
+   - Event listeners for uploading and adjusting reference images
+   - Depends on: state.js, viewport.js
+
+### Feature Modules (js/features/)
+
+8. **history.js** (45 lines)
+   - Undo/Redo system
+   - Functions: saveState(), undo(), redo(), restoreState(), snapshotCell()
+   - Depends on: cells.js, state.js
+
+9. **drawing.js** (115 lines)
    - Core drawing and commit logic
    - Functions: commitLine(), resolveAutoForColor(), getLineCells()
    - Depends on: cells.js, state.js, history.js, constants.js
 
-8. **connections.js** (20 lines)
-   - Connection rendering between stations
-   - Functions: renderConnections(), clearBoard()
-   - Depends on: state.js, history.js, constants.js
+10. **connections.js** (20 lines)
+    - Connection rendering between stations
+    - Functions: renderConnections(), clearBoard()
+    - Depends on: state.js, history.js, constants.js
 
-9. **tracktable.js** (60 lines)
-   - Track/station list display
-   - Functions: updateTrackTable()
-   - Depends on: state.js, constants.js, routing.js
+11. **tracktable.js** (60 lines)
+    - Track/station list display
+    - Functions: updateTrackTable()
+    - Depends on: state.js, constants.js, routing.js
 
-10. **routing.js** (140 lines)
+12. **routing.js** (140 lines)
     - Route finding and highlighting
     - Functions: getAllStations(), updateRouteDropdowns(), buildStationGraph(), findRoute(), highlightRoute(), renderRouteResult()
     - Depends on: state.js, cells.js, constants.js
 
-11. **fileio.js** (50 lines)
+### IO Modules (js/io/)
+
+13. **fileio.js** (50 lines)
     - Save/Load map functionality
     - Functions: saveMapToFile(), loadMapFromFile(), loadMapFromUrl()
     - Depends on: cells.js, state.js, history.js, connections.js
 
-12. **toolbar.js** (70 lines)
-    - Toolbar initialization
-    - Functions: initToolbar()
-    - Depends on: state.js, constants.js
+### Input Modules (js/input/)
 
-13. **keyboard.js** (50 lines)
+14. **keyboard.js** (50 lines)
     - Keyboard shortcut handling
     - All keyboard event listeners
     - Depends on: state.js, drawing.js, history.js, constants.js
 
-14. **refimage.js** (20 lines)
-    - Reference image management
-    - Event listeners for uploading and adjusting reference images
-    - Depends on: state.js, viewport.js
+### Application Entry Point
 
 15. **main.js** (10 lines)
     - Application initialization entry point
@@ -83,21 +119,22 @@ Your script.js has been split into multiple specialized modules for better maint
 
 ## Script Loading Order
 
-In `index.html`, scripts are loaded in this order to ensure all dependencies are available:
+In `app.html`, scripts are loaded in this order to ensure all dependencies are available:
 
-1. constants.js
-2. state.js
-3. cells.js
-4. history.js
-5. viewport.js
-6. preview.js
-7. drawing.js
-8. connections.js
-9. tracktable.js
-10. routing.js
-11. fileio.js
-12. toolbar.js
-13. keyboard.js
+1. **Core** (constants.js, state.js)
+2. **UI** (cells.js, viewport.js, preview.js, toolbar.js, refimage.js)
+3. **Features** (history.js, drawing.js, connections.js, tracktable.js, routing.js)
+4. **IO** (fileio.js)
+5. **Input** (keyboard.js)
+6. **Main** (main.js)
+
+## Benefits of This Structure
+
+- **Better Code Organization**: Related modules are grouped together
+- **Clearer Dependencies**: Core → UI → Features shows the dependency flow
+- **Easier Maintenance**: Find code by category, not just by line count
+- **Scalability**: Easy to add new modules to existing categories
+- **Documentation**: Clear folder names describe the purpose of each module
 14. refimage.js
 15. main.js
 
