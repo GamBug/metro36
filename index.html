@@ -4,10 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metro Architect — Login</title>
-    <meta name="description" content="Login to access Metro Architect - Design beautiful metro maps with ease.">
+    <title>Metro BaSau — Login</title>
+    <meta name="description" content="Login to access Metro BaSau - Design beautiful metro maps with ease.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        html {
+            font-size: 125%;
+        }
+
         *,
         *::before,
         *::after {
@@ -22,12 +26,28 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #0a0e1a;
+            background: #f5f5f3; /* Soft off-white background */
             overflow: hidden;
             position: relative;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: pageEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Animated background grid */
+        body.page-exit {
+            opacity: 0;
+            transform: scale(0.98) translateY(-10px);
+        }
+
+        @keyframes pageEnter {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Architectural blueprint grid */
         body::before {
             content: '';
             position: fixed;
@@ -36,68 +56,15 @@
             width: 100%;
             height: 100%;
             background:
-                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-            background-size: 60px 60px;
+                linear-gradient(rgba(17, 24, 39, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(17, 24, 39, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
             z-index: 0;
+            pointer-events: none;
         }
 
-        /* Animated gradient blobs */
-        .blob {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.4;
-            z-index: 0;
-        }
-
-        .blob-1 {
-            width: 400px;
-            height: 400px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            top: -100px;
-            right: -100px;
-            animation: float1 8s ease-in-out infinite;
-        }
-
-        .blob-2 {
-            width: 350px;
-            height: 350px;
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            bottom: -80px;
-            left: -80px;
-            animation: float2 10s ease-in-out infinite;
-        }
-
-        .blob-3 {
-            width: 250px;
-            height: 250px;
-            background: linear-gradient(135deg, #f59e0b, #ef4444);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation: float3 12s ease-in-out infinite;
-        }
-
-        @keyframes float1 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(-30px, 40px) scale(1.1); }
-            66% { transform: translate(20px, -20px) scale(0.95); }
-        }
-
-        @keyframes float2 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(40px, -30px) scale(1.05); }
-            66% { transform: translate(-20px, 30px) scale(1.1); }
-        }
-
-        @keyframes float3 {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.2); }
-        }
-
-        /* Metro lines decoration */
-        .metro-lines {
+        /* Minimalist Metro lines decoration */
+        .metro-lines-bg {
             position: fixed;
             top: 0;
             left: 0;
@@ -108,48 +75,47 @@
             pointer-events: none;
         }
 
-        .metro-line {
+        .line-bg {
             position: absolute;
-            height: 3px;
-            border-radius: 2px;
-            opacity: 0.15;
+            border-radius: 4px;
         }
 
-        .metro-line:nth-child(1) {
-            width: 60%;
-            top: 15%;
-            left: -10%;
-            background: #ef4444;
-            animation: slideLine 15s linear infinite;
-        }
-
-        .metro-line:nth-child(2) {
-            width: 45%;
+        .line-bg-red {
+            width: 150%;
+            height: 2px;
+            background: #dc2626;
             top: 35%;
-            right: -5%;
-            background: #3b82f6;
-            animation: slideLine 12s linear infinite reverse;
+            left: -20%;
+            transform: rotate(-15deg);
+            opacity: 0.8;
         }
 
-        .metro-line:nth-child(3) {
-            width: 55%;
-            top: 65%;
-            left: 5%;
-            background: #22c55e;
-            animation: slideLine 18s linear infinite;
+        .line-bg-black {
+            width: 150%;
+            height: 2px;
+            background: #111827;
+            top: 60%;
+            left: -20%;
+            transform: rotate(25deg);
+            opacity: 0.12;
         }
 
-        .metro-line:nth-child(4) {
-            width: 40%;
-            top: 85%;
-            right: 0;
-            background: #f59e0b;
-            animation: slideLine 14s linear infinite reverse;
+        .line-bg-train {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #dc2626;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            top: -4px;
+            left: 0;
+            box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+            animation: moveTrain 15s infinite linear;
         }
 
-        @keyframes slideLine {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(200%); }
+        @keyframes moveTrain {
+            0% { left: 0%; }
+            100% { left: 100%; }
         }
 
         /* Login card */
@@ -157,204 +123,151 @@
             position: relative;
             z-index: 10;
             width: 100%;
-            max-width: 420px;
-            padding: 48px 40px;
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            border-radius: 24px;
-            box-shadow:
-                0 0 0 1px rgba(255, 255, 255, 0.03),
-                0 25px 50px rgba(0, 0, 0, 0.5),
-                0 0 80px rgba(99, 102, 241, 0.08);
-            animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 500px;
+            padding: 55px 48px;
+            background: #ffffff;
+            border: 1px solid #111827;
+            border-radius: 4px; /* Sharp modernist edges */
+            box-shadow: 10px 10px 0px #111827; /* Hard offset shadow */
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes cardAppear {
-            0% {
-                opacity: 0;
-                transform: translateY(30px) scale(0.96);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+        .login-card:hover {
+            box-shadow: 10px 10px 0px #dc2626; /* Glow red on hover */
+            transform: translate(-2px, -2px);
         }
 
         .login-card .logo {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 8px;
         }
 
-        .login-card .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            border-radius: 14px;
+        .login-card h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.03em;
+            text-transform: uppercase;
+            font-family: 'Inter', sans-serif;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            gap: 6px;
         }
 
-        .login-card h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: #f1f5f9;
-            letter-spacing: -0.02em;
+        .logo-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #dc2626;
+            border-radius: 50%;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.8; }
         }
 
         .login-card .subtitle {
             text-align: center;
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-bottom: 36px;
-            line-height: 1.5;
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 30px;
+            font-family: monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .form-group label {
             display: block;
-            color: #94a3b8;
-            font-size: 0.8rem;
-            font-weight: 500;
+            color: #111827;
+            font-size: 0.75rem;
+            font-weight: 700;
             margin-bottom: 8px;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
+            font-family: monospace;
         }
 
         .input-wrapper {
             position: relative;
         }
 
-        .input-wrapper .icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.1rem;
-            opacity: 0.5;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
-
         .input-wrapper input {
             width: 100%;
-            padding: 14px 14px 14px 44px;
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(99, 102, 241, 0.12);
-            border-radius: 12px;
-            color: #f1f5f9;
+            padding: 12px 14px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            color: #111827;
             font-size: 0.95rem;
-            font-family: 'Inter', sans-serif;
+            font-family: monospace;
             outline: none;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .input-wrapper input:focus {
-            border-color: rgba(99, 102, 241, 0.5);
-            background: rgba(30, 41, 59, 0.8);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .input-wrapper input:focus ~ .icon {
-            opacity: 1;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
         }
 
         .input-wrapper input::placeholder {
-            color: #475569;
+            color: #9ca3af;
+            font-size: 0.85rem;
         }
 
         .btn-login {
             width: 100%;
             padding: 14px;
-            margin-top: 12px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
+            background: #111827;
+            color: #ffffff;
+            border: 1px solid #111827;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             cursor: pointer;
-            letter-spacing: 0.02em;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-            transition: left 0.5s;
-        }
-
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35);
-        }
-
-        .btn-login:hover::before {
-            left: 100%;
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
         }
 
         .btn-login:active {
-            transform: translateY(0);
+            transform: translateY(1px);
         }
 
         .btn-login:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
+            background: #6b7280;
+            border-color: #6b7280;
         }
 
-        /* Error message */
-        .error-msg {
-            margin-top: 16px;
-            padding: 12px 16px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            border-radius: 10px;
-            color: #fca5a5;
-            font-size: 0.85rem;
-            text-align: center;
-            display: none;
-            animation: shake 0.4s ease-in-out;
-        }
-
-        .error-msg.show {
-            display: block;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            50% { transform: translateX(8px); }
-            75% { transform: translateX(-4px); }
-        }
-
-        /* Success animation */
+        /* Success overlay is styled to be a subtle red overlay */
         .success-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(99, 102, 241, 0.15);
-            backdrop-filter: blur(4px);
+            background: rgba(220, 38, 38, 0.05);
+            backdrop-filter: blur(2px);
             z-index: 100;
             display: none;
             align-items: center;
@@ -384,45 +297,112 @@
         /* Footer */
         .footer-note {
             text-align: center;
-            margin-top: 28px;
-            color: #475569;
-            font-size: 0.75rem;
+            margin-top: 24px;
+            color: #9ca3af;
+            font-size: 0.7rem;
+            font-family: monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .footer-note span {
-            color: #6366f1;
+            color: #dc2626;
+            font-weight: bold;
         }
 
         /* Responsive */
         @media (max-width: 480px) {
             .login-card {
                 margin: 16px;
-                padding: 36px 28px;
+                padding: 30px 24px;
             }
+            .sticky-note {
+                top: -20px;
+                right: -10px;
+                bottom: auto;
+                font-size: 0.7rem;
+                width: 120px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* Sticky note post-it */
+        .sticky-note {
+            position: absolute;
+            top: -30px; /* Overlaps the top boundary of the login card */
+            right: -40px; /* Angled off the top-right corner */
+            bottom: auto;
+            width: 175px;
+            padding: 10px 15px;
+            background: #fef08a; /* Post-it yellow */
+            border: 1px solid #eab308;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #854d0e;
+            transform: rotate(-3deg);
+            transition: all 0.2s ease;
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        .sticky-note:hover {
+            transform: rotate(0deg) scale(1.05) translateY(-2px);
+            box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Error message alert */
+        .error-msg {
+            display: none;
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 16px;
+            font-family: monospace;
+            text-transform: uppercase;
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            padding: 8px;
+            background: rgba(220, 38, 38, 0.05);
+            border: 1px dashed #dc2626;
+            border-radius: 4px;
+        }
+
+        .error-msg.show {
+            display: block;
+            animation: shakeError 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        @keyframes shakeError {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
     </style>
 </head>
 
 <body>
     <!-- Background decorations -->
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-
-    <div class="metro-lines">
-        <div class="metro-line"></div>
-        <div class="metro-line"></div>
-        <div class="metro-line"></div>
-        <div class="metro-line"></div>
+    <div class="metro-lines-bg">
+        <div class="line-bg line-bg-red">
+            <div class="line-bg-train"></div>
+        </div>
+        <div class="line-bg line-bg-black"></div>
     </div>
 
     <!-- Login card -->
     <div class="login-card" id="loginCard">
-        <div class="logo">
-            <div class="logo-icon">🚇</div>
-            <h1>Metro Architect</h1>
+        <!-- Sticky note showing pass -->
+        <div class="sticky-note">
+            📌 <strong>NOTE</strong><br>
+            pass: admin123
         </div>
-        <p class="subtitle">Sign in to access the Metro Map Builder</p>
+
+        <div class="logo">
+            <h1><span class="logo-dot"></span>Metro BaSau</h1>
+        </div>
+        <p class="subtitle">Design beautiful metro maps</p>
 
         <form id="loginForm" autocomplete="off">
             <div class="form-group">
@@ -431,36 +411,35 @@
                     <input
                         type="password"
                         id="passwordInput"
-                        placeholder="Enter your password"
+                        placeholder="ENTER PASSWORD"
                         autofocus
                         required
                     >
-                    <span class="icon">🔒</span>
                 </div>
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 12px;">
                 <button type="submit" class="btn-login" id="loginBtn" style="flex: 2;">
-                    Sign In (Admin)
+                    Sign In
                 </button>
-                <button type="button" class="btn-login" id="guestBtn" style="flex: 1; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8;">
+                <button type="button" class="btn-login btn-guest" id="guestBtn" style="flex: 1;">
                     Guest
                 </button>
             </div>
 
             <div class="error-msg" id="errorMsg">
-                ⚠️ Incorrect password. Please try again.
+                ⚠️ Incorrect password. Try again.
             </div>
         </form>
 
         <div class="footer-note">
-            <span>Metro Architect</span> — Design beautiful metro maps
+            <span>METRO BASAU</span> — Blueprints & Maps
         </div>
     </div>
 
     <!-- Success overlay -->
     <div class="success-overlay" id="successOverlay">
-        <div class="success-icon">✅</div>
+        <div class="success-icon"></div>
     </div>
 
     <script>
@@ -481,10 +460,12 @@
         function loginSuccess(role) {
             sessionStorage.setItem('metro_auth', 'true');
             sessionStorage.setItem('metro_role', role);
-            successOverlay.classList.add('show');
+            
+            // Trigger smooth page-exit transition
+            document.body.classList.add('page-exit');
             setTimeout(function () {
                 window.location.href = 'app.html';
-            }, 800);
+            }, 500);
         }
 
         guestBtn.addEventListener('click', function() {
@@ -498,7 +479,7 @@
 
             if (password === CORRECT_PASSWORD) {
                 loginBtn.disabled = true;
-                loginBtn.textContent = 'Signing in...';
+                loginBtn.textContent = 'SIGNING IN...';
                 errorMsg.classList.remove('show');
                 loginSuccess('admin');
             } else {

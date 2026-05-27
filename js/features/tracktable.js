@@ -66,7 +66,7 @@ function updateTrackTable() {
                 visited.add(curr); unvisited.delete(curr);
                 const c = cellsMap.get(curr);
                 if (c.hasStation && c.stationName) {
-                    let stHtml = c.stationName;
+                    let stHtml = escapeHTML(c.stationName);
                     if (transferMap.has(curr)) {
                         const tLines = [];
                         transferMap.get(curr).forEach(tk => {

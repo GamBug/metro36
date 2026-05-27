@@ -18,8 +18,9 @@ window.addEventListener('keydown', (e) => {
     }
     if (key >= '1' && key <= '8') {
         const colorIndex = parseInt(key) - 1;
-        if (colorIndex < METRO_COLORS.length) {
-            document.querySelectorAll('.color-btn')[colorIndex].click();
+        const colorBtns = document.querySelectorAll('.color-btn');
+        if (colorIndex < colorBtns.length && colorBtns[colorIndex]) {
+            colorBtns[colorIndex].click();
         }
         return;
     }

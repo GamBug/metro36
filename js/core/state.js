@@ -19,7 +19,7 @@ const MAX_HISTORY = 100;
 // Viewport elements
 const viewport = document.getElementById('grid-viewport');
 const canvas = document.getElementById('grid-canvas');
-let cameraX = 0, cameraY = 0, cameraZoom = 1;
+let cameraX = 0, cameraY = 0, cameraZoom = 0.13;
 let isDrawing = false, isPanning = false;
 let startGX = 0, startGY = 0, currentGX = 0, currentGY = 0;
 let lastMouseX = 0, lastMouseY = 0;

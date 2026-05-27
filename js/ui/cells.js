@@ -43,7 +43,7 @@ function updateCellDOM(cell, layers, hasStation, stationName) {
     }
     let html = `<svg class="track-svg" viewBox="0 0 40 40" overflow="visible">${svgInner}</svg>`;
     if (hasStation && stationName) {
-        html += `<div class="station-label">${stationName}</div>`;
+        html += `<div class="station-label">${escapeHTML(stationName)}</div>`;
     }
     cell.innerHTML = html;
 }

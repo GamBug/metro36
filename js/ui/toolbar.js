@@ -67,9 +67,9 @@ function initToolbar() {
             } else if (track.type === 'auto') {
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg> Magic Tool (M)`;
             } else if (track.type === 'station') {
-                btn.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="10" fill="white" stroke="#38bdf8" stroke-width="6" /></svg> Station (S)`;
+                btn.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="10" fill="white" stroke="#dc2626" stroke-width="6" /></svg> Station (S)`;
             } else if (track.type === 'transfer') {
-                btn.innerHTML = `<svg viewBox="0 0 40 40"><rect x="10" y="16" width="20" height="8" fill="white" stroke="#38bdf8" stroke-width="2" /><line x1="5" y1="20" x2="35" y2="20" stroke="white" stroke-width="6" stroke-dasharray="4,4" /><line x1="5" y1="20" x2="35" y2="20" stroke="black" stroke-width="4" stroke-dasharray="2,6" /></svg> Connect (T)`;
+                btn.innerHTML = `<svg viewBox="0 0 40 40"><rect x="10" y="16" width="20" height="8" fill="white" stroke="#dc2626" stroke-width="2" /><line x1="5" y1="20" x2="35" y2="20" stroke="white" stroke-width="6" stroke-dasharray="4,4" /><line x1="5" y1="20" x2="35" y2="20" stroke="black" stroke-width="4" stroke-dasharray="2,6" /></svg> Connect (T)`;
             } else if (track.type === 'pan') {
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3-3-3M2 12h20M12 2v20"/></svg> Move (V)`;
             } else if (track.type === 'oneway') {

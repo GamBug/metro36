@@ -67,7 +67,7 @@ function initViewport() {
         const rect = viewport.getBoundingClientRect();
         const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
         const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-        let newZoom = Math.max(0.2, Math.min(cameraZoom * zoomDelta, 3));
+        let newZoom = Math.max(0.13, Math.min(cameraZoom * zoomDelta, 3));
         const gx = (mouseX - cameraX) / cameraZoom, gy = (mouseY - cameraY) / cameraZoom;
         cameraX = mouseX - gx * newZoom; cameraY = mouseY - gy * newZoom; cameraZoom = newZoom;
         updateTransform();
@@ -129,4 +129,20 @@ function initRefImage() {
     if (toggleMove) {
         toggleMove.addEventListener('click', (e) => { isMoveRefMode = !isMoveRefMode; e.target.classList.toggle('active', isMoveRefMode); });
     }
+}
+
+function centerCameraOnMap() {
+    if (gridData.size === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    gridData.forEach((cell, key) => {
+        const [gx, gy] = key.split(',').map(Number);
+        if (gx < minX) minX = gx; if (gx > maxX) maxX = gx;
+        if (gy < minY) minY = gy; if (gy > maxY) maxY = gy;
+    });
+    const midX = (minX + maxX) / 2 + 0.5;
+    const midY = (minY + maxY) / 2 + 0.5;
+    const rect = viewport.getBoundingClientRect();
+    cameraX = (rect.width / 2) - (midX * CELL_SIZE) * cameraZoom;
+    cameraY = (rect.height / 2) - (midY * CELL_SIZE) * cameraZoom;
+    updateTransform();
 }

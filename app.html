@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metro Map Builder</title>
+    <title>Metro BaSau Map Builder</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -18,24 +18,23 @@
 
     <div class="header">
         <div class="header-left">
-            <h1>Metro Architect</h1>
-            <p class="desc">Left Click to Draw | Middle/Right Click to Pan | Scroll to Zoom</p>
+            <h1>Metro BaSau <span class="logo-dot"></span></h1>
         </div>
         <div class="header-right">
             <div class="save-load-group">
-                <button id="saveMapBtn" class="btn-save" title="Ctrl+S">💾 Save (Ctrl+S)</button>
-                <button id="loadMapBtn" class="btn-load" title="Ctrl+O">📂 Load (Ctrl+O)</button>
+                <button id="saveMapBtn" class="btn-save" title="Ctrl+S">SAVE (Ctrl+S)</button>
+                <button id="loadMapBtn" class="btn-load" title="Ctrl+O">LOAD (Ctrl+O)</button>
                 <input type="file" id="loadMapFile" accept=".json" style="display: none;">
             </div>
-            <button id="clearBtn" class="btn-clear" title="Ctrl+E">🗑️ Clear (Ctrl+E)</button>
-            <button id="themeToggle" class="theme-toggle" title="Toggle Dark/Light Mode">🌙</button>
-            <button id="logoutBtn" class="btn-logout" title="Back to Login">🚪 Logout</button>
+            <button id="clearBtn" class="btn-clear" title="Ctrl+E">CLEAR</button>
+            <button id="themeToggle" class="theme-toggle" title="Toggle Theme">🌓</button>
+            <button id="logoutBtn" class="btn-logout" title="Back to Login">LOGOUT</button>
         </div>
     </div>
 
     <div class="app-container">
         <!-- Sidebar Toolbar -->
-        <div class="toolbar">
+        <div class="toolbar collapsed">
             <div class="tool-section">
                 <h3>Line Color</h3>
                 <div class="color-palette" id="colorPalette"></div>
@@ -49,6 +48,9 @@
 
         <!-- Infinite Drawing Grid -->
         <div id="grid-viewport" class="grid-viewport">
+            <button id="toggleLeftBtn" class="sidebar-toggle-btn left" title="Expand Left Sidebar">▶</button>
+            <button id="toggleRightBtn" class="sidebar-toggle-btn right" title="Collapse Right Sidebar">▶</button>
+            
             <div id="grid-canvas" class="grid-canvas">
                 <svg id="connections-layer" overflow="visible"></svg>
                 <div id="grid-cursor-highlight"></div>
@@ -61,7 +63,7 @@
         <div class="right-panel" id="rightPanel">
             <!-- Route Finder Section -->
             <div class="tool-section route-finder-section">
-                <h3>🚇 Find Route</h3>
+                <h3>Find Route</h3>
                 <div class="route-form">
                     <div class="route-field admin-only">
                         <label>Exclude Lines</label>
@@ -223,14 +225,37 @@
     <!-- App Entry Point -->
     <script src="js/main.js"></script>
     
-    <!-- Logout Handler -->
+    <!-- Logout & Sidebar Toggle Handlers -->
     <script>
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            // Clear session storage
-            sessionStorage.removeItem('metro_auth');
-            sessionStorage.removeItem('metro_role');
-            // Redirect to login page
-            window.location.replace('index.html');
+            document.body.classList.add('page-exit');
+            setTimeout(() => {
+                // Clear session storage
+                sessionStorage.removeItem('metro_auth');
+                sessionStorage.removeItem('metro_role');
+                // Redirect to login page
+                window.location.replace('index.html');
+            }, 400);
+        });
+
+        // Sidebar Collapsing Logic
+        const toggleLeftBtn = document.getElementById('toggleLeftBtn');
+        const toggleRightBtn = document.getElementById('toggleRightBtn');
+        const toolbar = document.querySelector('.toolbar');
+        const rightPanel = document.querySelector('.right-panel');
+
+        toggleLeftBtn.addEventListener('click', () => {
+            toolbar.classList.toggle('collapsed');
+            const isCollapsed = toolbar.classList.contains('collapsed');
+            toggleLeftBtn.textContent = isCollapsed ? '▶' : '◀';
+            toggleLeftBtn.title = isCollapsed ? 'Expand Left Sidebar' : 'Collapse Left Sidebar';
+        });
+
+        toggleRightBtn.addEventListener('click', () => {
+            rightPanel.classList.toggle('collapsed');
+            const isCollapsed = rightPanel.classList.contains('collapsed');
+            toggleRightBtn.textContent = isCollapsed ? '◀' : '▶';
+            toggleRightBtn.title = isCollapsed ? 'Expand Right Sidebar' : 'Collapse Right Sidebar';
         });
     </script>
 </body>

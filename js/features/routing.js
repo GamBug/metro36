@@ -57,8 +57,8 @@ function updateRouteDropdowns() {
     const stations = getAllStations();
     const build = (sel) => {
         let h = '<option value="" style="color:#94a3b8">-- Select Station --</option>';
-        stations.forEach(st => { 
-            h += `<option value="${st.key}" style="color:${st.color}; font-weight:600;"${st.key === sel ? ' selected' : ''}>${st.name}</option>`; 
+        stations.forEach(st => {
+            h += `<option value="${st.key}" style="color:${st.color}; font-weight:600;"${st.key === sel ? ' selected' : ''}>${escapeHTML(st.name)}</option>`;
         });
         return h;
     };
@@ -100,11 +100,11 @@ function buildStationGraph() {
             exits.forEach(d => {
                 if (c.direction != null && c.direction !== d) return;
                 const off = dirOffsets[d]; if (!off) return;
-                const nk = `${x+off.x},${y+off.y}`;
+                const nk = `${x + off.x},${y + off.y}`;
                 if (cellsMap.has(nk)) {
                     const nc = cellsMap.get(nk);
-                    if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) {
-                        if (nc.direction != null && nc.direction === (d+4)%8) return;
+                    if (nc.type !== 0 && (TRACK_EXITS[nc.type] || []).includes((d + 4) % 8)) {
+                        if (nc.direction != null && nc.direction === (d + 4) % 8) return;
                         nb.push(nk);
                     }
                 }
@@ -116,19 +116,24 @@ function buildStationGraph() {
         cellsMap.forEach((c, k) => { if (c.hasStation && c.stationName) stationsInColor.push(k); });
 
         stationsInColor.forEach(sk => {
-            const visited = new Set([sk]); const queue = [sk];
+            const visited = new Set([sk]); const queue = [{key: sk, dist: 0}];
             while (queue.length > 0) {
                 const curr = queue.shift();
-                for (const nk of getNeighbors(curr)) {
+                for (const nk of getNeighbors(curr.key)) {
                     if (visited.has(nk)) continue; visited.add(nk);
                     const nc = cellsMap.get(nk);
+                    const [cx, cy] = curr.key.split(',').map(Number);
+                    const [nx, ny] = nk.split(',').map(Number);
+                    const stepDist = Math.sqrt(Math.pow(nx - cx, 2) + Math.pow(ny - cy, 2));
+                    const newDist = curr.dist + stepDist;
+
                     if (nc && nc.hasStation && nc.stationName && nk !== sk) {
                         if (!graph.has(sk)) graph.set(sk, []);
                         if (!graph.get(sk).some(e => e.to === nk && e.color === color))
-                            graph.get(sk).push({ to: nk, color, viaTransfer: false });
+                            graph.get(sk).push({ to: nk, color, viaTransfer: false, gridDist: newDist });
                         // Stop at intermediate stations — don't expand through them
                     } else {
-                        queue.push(nk);
+                        queue.push({key: nk, dist: newDist});
                     }
                 }
             }
@@ -138,10 +143,13 @@ function buildStationGraph() {
     connections.forEach(conn => {
         const fc = gridData.get(conn.from), tc = gridData.get(conn.to);
         if (fc && tc && fc.hasStation && tc.hasStation) {
+            const [fx, fy] = conn.from.split(',').map(Number);
+            const [tx, ty] = conn.to.split(',').map(Number);
+            const dist = Math.sqrt(Math.pow(tx - fx, 2) + Math.pow(ty - fy, 2));
             if (!graph.has(conn.from)) graph.set(conn.from, []);
             if (!graph.has(conn.to)) graph.set(conn.to, []);
-            if (!graph.get(conn.from).some(e => e.to === conn.to && e.viaTransfer)) graph.get(conn.from).push({ to: conn.to, color: null, viaTransfer: true });
-            if (!graph.get(conn.to).some(e => e.to === conn.from && e.viaTransfer)) graph.get(conn.to).push({ to: conn.from, color: null, viaTransfer: true });
+            if (!graph.get(conn.from).some(e => e.to === conn.to && e.viaTransfer)) graph.get(conn.from).push({ to: conn.to, color: null, viaTransfer: true, gridDist: dist });
+            if (!graph.get(conn.to).some(e => e.to === conn.from && e.viaTransfer)) graph.get(conn.to).push({ to: conn.from, color: null, viaTransfer: true, gridDist: dist });
         }
     });
     return graph;
@@ -153,12 +161,19 @@ function findRoute(fromKey, toKey) {
 
     const [targetX, targetY] = toKey.split(',').map(Number);
 
-    // Octile Distance Heuristic: h = |a-b| + sqrt(2) * min(a,b)
+    const CELL_KM = 0.25;
+    const V_TRAIN = 35; // km/h
+    const V_WALK = 4.5; // km/h
+    const T_DWELL = 0.5 / 60; // hours (0.5 mins)
+
+    // Heuristic: Optimistic time to reach destination in hours
     function getHeuristic(key) {
         const [x, y] = key.split(',').map(Number);
         const a = Math.abs(x - targetX);
         const b = Math.abs(y - targetY);
-        return Math.abs(a - b) + (Math.SQRT2) * Math.min(a, b);
+        const gridDist = Math.abs(a - b) + (Math.SQRT2) * Math.min(a, b);
+        const distKm = gridDist * CELL_KM;
+        return distKm / V_TRAIN;
     }
 
     const openSet = [fromKey];
@@ -185,10 +200,10 @@ function findRoute(fromKey, toKey) {
             let node = toKey;
             while (node !== null) {
                 const info = visited.get(node);
-                path.unshift({ 
-                    stationKey: node, 
-                    edgeColor: info.edgeColor, 
-                    viaTransfer: info.viaTransfer 
+                path.unshift({
+                    stationKey: node,
+                    edgeColor: info.edgeColor,
+                    viaTransfer: info.viaTransfer
                 });
                 node = info.prev;
             }
@@ -198,15 +213,22 @@ function findRoute(fromKey, toKey) {
         const edges = graph.get(curr) || [];
         for (const edge of edges) {
             if (closedSet.has(edge.to)) continue;
-            // Cost: transfer = 2 (penalty), regular track = 1
-            const weight = edge.viaTransfer ? 2 : 1;
+            
+            let weight;
+            if (edge.viaTransfer) {
+                const walkDistKm = edge.gridDist * CELL_KM;
+                weight = walkDistKm / V_WALK;
+            } else {
+                const trainDistKm = edge.gridDist * CELL_KM;
+                weight = (trainDistKm / V_TRAIN) + T_DWELL;
+            }
             const tentativeGScore = gScore.get(curr) + weight;
 
             if (!gScore.has(edge.to) || tentativeGScore < gScore.get(edge.to)) {
                 visited.set(edge.to, { prev: curr, edgeColor: edge.color, viaTransfer: edge.viaTransfer });
                 gScore.set(edge.to, tentativeGScore);
                 fScore.set(edge.to, tentativeGScore + getHeuristic(edge.to));
-                
+
                 if (!openSet.includes(edge.to)) {
                     openSet.push(edge.to);
                 }
@@ -228,15 +250,15 @@ function getTrackCellsBetweenStations(fromKey, toKey, color) {
         const [x, y] = k.split(',').map(Number); const nb = [];
         exits.forEach(d => {
             if (c.direction != null && c.direction !== d) return;
-            const off = dirOffsets[d]; if (!off) return; 
-            const nk = `${x+off.x},${y+off.y}`; 
+            const off = dirOffsets[d]; if (!off) return;
+            const nk = `${x + off.x},${y + off.y}`;
             if (colorCells.has(nk)) {
-                const nc = colorCells.get(nk); 
-                if (nc.type !== 0 && (TRACK_EXITS[nc.type]||[]).includes((d+4)%8)) {
-                    if (nc.direction != null && nc.direction === (d+4)%8) return;
+                const nc = colorCells.get(nk);
+                if (nc.type !== 0 && (TRACK_EXITS[nc.type] || []).includes((d + 4) % 8)) {
+                    if (nc.direction != null && nc.direction === (d + 4) % 8) return;
                     nb.push(nk);
                 }
-            } 
+            }
         });
         return nb;
     };
@@ -265,7 +287,7 @@ function highlightRoute(path) {
     if (path.length > 0) {
         const startStep = path[0];
         const endStep = path[path.length - 1];
-        
+
         const addHighlight = (step, type, emoji) => {
             const [gx, gy] = step.stationKey.split(',').map(Number);
             const overlay = document.createElement('div');
@@ -274,17 +296,17 @@ function highlightRoute(path) {
             overlay.style.height = `${CELL_SIZE * 2}px`;
             overlay.style.left = `${(gx - 0.5) * CELL_SIZE}px`;
             overlay.style.top = `${(gy - 0.5) * CELL_SIZE}px`;
-            
+
             if (emoji) {
                 const emojiEl = document.createElement('div');
                 emojiEl.className = 'route-endpoint-emoji';
                 emojiEl.textContent = emoji;
                 overlay.appendChild(emojiEl);
             }
-            
+
             canvas.appendChild(overlay);
         };
-        
+
         addHighlight(startStep, 'start', '🚂');
         if (startStep.stationKey !== endStep.stationKey) {
             addHighlight(endStep, 'end', '🏁');
@@ -296,24 +318,24 @@ function highlightRoute(path) {
         if (cell && cell.domNode) {
             cell.domNode.classList.add('route-highlight');
             routeHighlightedKeys.push(step.stationKey);
-            
+
             // Highlight the layer used to reach this station
             if (step.edgeColor) highlightLayer(cell.domNode, step.edgeColor);
-            
+
             // If there's a next step on the same line, highlight that too
-            if (i + 1 < path.length && !path[i+1].viaTransfer) {
-                highlightLayer(cell.domNode, path[i+1].edgeColor);
+            if (i + 1 < path.length && !path[i + 1].viaTransfer) {
+                highlightLayer(cell.domNode, path[i + 1].edgeColor);
             }
         }
-        
+
         if (i > 0 && step.viaTransfer) {
-            const connKey = `conn-${path[i-1].stationKey}-${step.stationKey}`;
+            const connKey = `conn-${path[i - 1].stationKey}-${step.stationKey}`;
             document.querySelectorAll(`.${CSS.escape(connKey)}`).forEach(line => {
                 line.classList.add('route-highlight-line');
             });
         }
         if (i > 0 && !step.viaTransfer && step.edgeColor) {
-            getTrackCellsBetweenStations(path[i-1].stationKey, step.stationKey, step.edgeColor).forEach(tk => {
+            getTrackCellsBetweenStations(path[i - 1].stationKey, step.stationKey, step.edgeColor).forEach(tk => {
                 const tc = gridData.get(tk);
                 if (tc && tc.domNode) {
                     tc.domNode.classList.add('route-highlight');
@@ -347,13 +369,13 @@ function renderRouteResult(path) {
     const legs = []; let currentLeg = null;
     for (let i = 0; i < path.length; i++) {
         const step = path[i]; const cell = gridData.get(step.stationKey);
-        const name = cell ? cell.stationName : '?';
+        const name = cell ? escapeHTML(cell.stationName) : '?';
         if (i === 0) { currentLeg = { color: step.edgeColor || cellFirstColor(cell), stations: [name] }; }
         else if (step.viaTransfer) { if (currentLeg) legs.push(currentLeg); currentLeg = { color: cellFirstColor(cell), stations: [name], isTransfer: true }; }
         else {
             if (step.edgeColor && currentLeg && step.edgeColor !== currentLeg.color) {
                 if (currentLeg) legs.push(currentLeg);
-                const prev = gridData.get(path[i-1].stationKey);
+                const prev = gridData.get(path[i - 1].stationKey);
                 currentLeg = { color: step.edgeColor, stations: [prev ? prev.stationName : '?', name] };
             } else { currentLeg.stations.push(name); }
         }
@@ -392,11 +414,11 @@ function renderRouteResult(path) {
 function pickRandomStations() {
     const stations = getAllStations();
     if (stations.length < 2) return null;
-    
+
     // Pick two distinct random stations using modular arithmetic (no loop)
     const idx1 = Math.floor(Math.random() * stations.length);
     const idx2 = (idx1 + 1 + Math.floor(Math.random() * (stations.length - 1))) % stations.length;
-    
+
     return { from: stations[idx1].key, to: stations[idx2].key };
 }
 
@@ -410,7 +432,7 @@ function initRouteFinder() {
     const toSelect = document.getElementById('routeTo');
     const pickFromBtn = document.getElementById('pickFromBtn');
     const pickToBtn = document.getElementById('pickToBtn');
-    
+
     if (!findBtn) return;
 
     function updatePickModeUI() {
@@ -456,17 +478,22 @@ function initRouteFinder() {
         resultDiv.innerHTML = renderRouteResult(path); highlightRoute(path); clearBtn.style.display = 'block';
     });
     if (clearBtn) clearBtn.addEventListener('click', () => { clearRouteHighlight(); resultDiv.innerHTML = ''; clearBtn.style.display = 'none'; });
-    if (swapBtn) swapBtn.addEventListener('click', () => { 
-        const tmp = fromSelect.value; 
-        fromSelect.value = toSelect.value; 
+    if (swapBtn) swapBtn.addEventListener('click', () => {
+        const tmp = fromSelect.value;
+        fromSelect.value = toSelect.value;
         toSelect.value = tmp;
         syncSelectColor(fromSelect);
         syncSelectColor(toSelect);
+        
+        // Auto-refresh route if a route was already being shown
+        if (resultDiv.children.length > 0 && !resultDiv.querySelector('.route-error')) {
+            findBtn.click();
+        }
     });
 
     fromSelect.addEventListener('change', () => syncSelectColor(fromSelect));
     toSelect.addEventListener('change', () => syncSelectColor(toSelect));
-    
+
     initColorExcludePalette();
 }
 
@@ -487,7 +514,7 @@ function initColorExcludePalette() {
                 btn.classList.add('active');
             }
             btn.title = isExcluded ? `Include ${colorNames[color]} Line` : `Exclude ${colorNames[color]} Line`;
-            
+
             btn.addEventListener('click', () => {
                 if (excludedColors.has(color)) {
                     excludedColors.delete(color);

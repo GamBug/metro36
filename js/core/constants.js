@@ -66,3 +66,14 @@ const colorNames = {
     '#ef4444': 'Red', '#f97316': 'Orange', '#eab308': 'Yellow', '#22c55e': 'Green',
     '#0ea5e9': 'Blue', '#6366f1': 'Indigo', '#ec4899': 'Pink', '#94a3b8': 'Silver'
 };
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag));
+}

@@ -29,6 +29,7 @@ function renderConnections() {
 }
 
 function clearBoard() {
+    if (sessionStorage.getItem('metro_role') === 'guest') return;
     if (gridData.size === 0 && connections.length === 0) return;
     if (!confirm('Clear the entire board? This action can be undone with Ctrl+Z.')) return;
     saveState();

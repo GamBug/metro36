@@ -1,6 +1,33 @@
 // ======= FILE I/O (Save/Load) =======
 // Dependencies: state.js, cells.js, history.js, connections.js, tracktable.js, routing.js (for clearGraphCache)
 
+// Validates the map JSON structure to prevent application crashes and corrupt states
+function validateMapData(data) {
+    if (!data || typeof data !== 'object') return false;
+    if (!data.grid || !Array.isArray(data.grid)) return false;
+    
+    // Validate each grid item
+    for (const item of data.grid) {
+        if (!item || typeof item !== 'object') return false;
+        if (typeof item.key !== 'string') return false;
+        const parts = item.key.split(',');
+        if (parts.length !== 2 || isNaN(Number(parts[0])) || isNaN(Number(parts[1]))) return false;
+        
+        // item.layers is optional but must be an object if present
+        if (item.layers && typeof item.layers !== 'object') return false;
+    }
+    
+    // Validate connections if present
+    if (data.connections) {
+        if (!Array.isArray(data.connections)) return false;
+        for (const conn of data.connections) {
+            if (!conn || typeof conn !== 'object') return false;
+            if (typeof conn.from !== 'string' || typeof conn.to !== 'string') return false;
+        }
+    }
+    return true;
+}
+
 function saveMapToFile() {
     const data = { version: 2, grid: [], connections: JSON.parse(JSON.stringify(connections)) };
     gridData.forEach((cell, key) => {
@@ -17,7 +44,7 @@ function loadMapFromFile(file) {
     reader.onload = (e) => {
         try {
             const data = JSON.parse(e.target.result);
-            if (!data.grid || !Array.isArray(data.grid)) { alert('Invalid map file.'); return; }
+            if (!validateMapData(data)) { alert('Invalid map file structure.'); return; }
             saveState();
             gridData.forEach(cell => cell.domNode.remove()); gridData.clear();
             connections = []; transferStartKey = null;
@@ -29,14 +56,40 @@ function loadMapFromFile(file) {
                 if (!layers && item.type !== undefined && item.color) {
                     layers = { [item.color]: { type: item.type, isAuto: item.isAuto || false } };
                 }
+
+                // Sanitize layers to prevent XSS via malicious color keys
+                const sanitizedLayers = {};
+                const hexRegex = /^#[0-9A-Fa-f]{3,8}$/;
+                if (layers) {
+                    for (const color in layers) {
+                        if (hexRegex.test(color) || (typeof METRO_COLORS !== 'undefined' && METRO_COLORS.includes(color))) {
+                            sanitizedLayers[color] = {
+                                type: layers[color].type,
+                                isAuto: layers[color].isAuto || false,
+                                direction: layers[color].direction !== undefined ? layers[color].direction : null
+                            };
+                        } else {
+                            console.warn(`[Security] Blocked invalid color key: ${color}`);
+                        }
+                    }
+                }
+                layers = sanitizedLayers;
+
                 const [gx, gy] = item.key.split(',').map(Number);
                 const domNode = createCellDOM(gx, gy, layers, item.hasStation, item.stationName);
                 canvas.appendChild(domNode);
                 gridData.set(item.key, { layers, hasStation: item.hasStation || false, stationName: item.stationName || null, domNode });
             });
-            if (data.connections) connections = data.connections;
+
+            if (data.connections && Array.isArray(data.connections)) {
+                connections = data.connections.filter(c => c && typeof c.from === 'string' && typeof c.to === 'string');
+            } else {
+                connections = [];
+            }
+
             renderConnections();
             if (typeof updateTrackTable === 'function') updateTrackTable();
+            setTimeout(() => { if (typeof centerCameraOnMap === 'function') centerCameraOnMap(); }, 50);
         } catch (err) { alert('Error reading map file: ' + err.message); }
     };
     reader.readAsText(file);
@@ -53,7 +106,10 @@ async function loadMapFromUrl(url) {
         const response = await fetch(url);
         if (!response.ok) return;
         const data = await response.json();
-        if (!data.grid || !Array.isArray(data.grid)) return;
+        if (!validateMapData(data)) {
+            console.error('Invalid default map format');
+            return;
+        }
         
         saveState();
         gridData.forEach(cell => cell.domNode.remove()); gridData.clear();
@@ -65,31 +121,44 @@ async function loadMapFromUrl(url) {
             if (!layers && item.type !== undefined && item.color) {
                 layers = { [item.color]: { type: item.type, isAuto: item.isAuto || false } };
             }
+
+            // Sanitize layers to prevent XSS via malicious color keys
+            const sanitizedLayers = {};
+            const hexRegex = /^#[0-9A-Fa-f]{3,8}$/;
+            if (layers) {
+                for (const color in layers) {
+                    if (hexRegex.test(color) || (typeof METRO_COLORS !== 'undefined' && METRO_COLORS.includes(color))) {
+                        sanitizedLayers[color] = {
+                            type: layers[color].type,
+                            isAuto: layers[color].isAuto || false,
+                            direction: layers[color].direction !== undefined ? layers[color].direction : null
+                        };
+                    } else {
+                        console.warn(`[Security] Blocked invalid color key: ${color}`);
+                    }
+                }
+            }
+            layers = sanitizedLayers;
+
             const [gx, gy] = item.key.split(',').map(Number);
             const domNode = createCellDOM(gx, gy, layers, item.hasStation, item.stationName);
             canvas.appendChild(domNode);
             gridData.set(item.key, { layers, hasStation: item.hasStation || false, stationName: item.stationName || null, domNode });
         });
-        if (data.connections) connections = data.connections;
+
+        if (data.connections && Array.isArray(data.connections)) {
+            connections = data.connections.filter(c => c && typeof c.from === 'string' && typeof c.to === 'string');
+        } else {
+            connections = [];
+        }
+
         renderConnections();
         if (typeof updateTrackTable === 'function') updateTrackTable();
         
         // Auto-center camera around map
-        if (data.grid.length > 0) {
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            data.grid.forEach(item => {
-                const [gx, gy] = item.key.split(',').map(Number);
-                if (gx < minX) minX = gx; if (gx > maxX) maxX = gx;
-                if (gy < minY) minY = gy; if (gy > maxY) maxY = gy;
-            });
-            const midX = (minX + maxX) / 2;
-            const midY = (minY + maxY) / 2;
-            const rect = viewport.getBoundingClientRect();
-            cameraX = (rect.width / 2) - midX * CELL_SIZE;
-            cameraY = (rect.height / 2) - midY * CELL_SIZE;
-            updateTransform();
-        }
+        setTimeout(() => { if (typeof centerCameraOnMap === 'function') centerCameraOnMap(); }, 50);
     } catch (err) {
         console.error('Failed to load default map', err);
     }
 }
+

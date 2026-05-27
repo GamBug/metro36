@@ -3,7 +3,7 @@
 
 function initTheme() {
     const saved = localStorage.getItem('metro_theme');
-    const theme = saved || 'dark'; // default dark
+    const theme = saved || 'light'; // default light
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeIcon(theme);
 
