@@ -111,12 +111,9 @@
                 <div id="routeResult" class="route-result"></div>
             </div>
 
-            <div class="tool-section admin-only collapsible-section" id="routingTesterSection">
-                <h3 class="collapsible-trigger" id="routingTesterTrigger" title="Click to expand/collapse Pathfinding Tester">
-                    <span>Pathfinding Tester</span>
-                    <span class="chevron">▶</span>
-                </h3>
-                <div class="collapsible-content collapsed" id="routingTesterContent">
+            <div class="tool-section admin-only" id="routingTesterSection">
+                <h3>Pathfinding Tester</h3>
+                <div id="routingTesterContent">
                     <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; font-family: monospace;">
                         Compare standard A* vs Dijkstra across all possible network routes.
                     </p>
@@ -478,25 +475,6 @@
                     if (chevron) chevron.textContent = '▼';
                 } else {
                     trackStationsContent.classList.add('collapsed');
-                    if (chevron) chevron.textContent = '▶';
-                }
-            });
-        }
-
-        // ======= COLLAPSIBLE ROUTING TESTER LOGIC =======
-        const routingTesterTrigger = document.getElementById('routingTesterTrigger');
-        const routingTesterContent = document.getElementById('routingTesterContent');
-
-        if (routingTesterTrigger && routingTesterContent) {
-            routingTesterTrigger.addEventListener('click', () => {
-                const isCollapsed = routingTesterContent.classList.contains('collapsed');
-                const chevron = routingTesterTrigger.querySelector('.chevron');
-                
-                if (isCollapsed) {
-                    routingTesterContent.classList.remove('collapsed');
-                    if (chevron) chevron.textContent = '▼';
-                } else {
-                    routingTesterContent.classList.add('collapsed');
                     if (chevron) chevron.textContent = '▶';
                 }
             });
