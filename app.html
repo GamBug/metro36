@@ -70,6 +70,13 @@
                         <div class="color-exclude-palette" id="routeExcludePalette"></div>
                     </div>
                     <div class="route-field">
+                        <label for="routeAlgorithm">Routing Algorithm</label>
+                        <select id="routeAlgorithm" class="route-select">
+                            <option value="astar">A* (A-Star Search)</option>
+                            <option value="dijkstra">Dijkstra's Algorithm</option>
+                        </select>
+                    </div>
+                    <div class="route-field">
                         <label for="routeFrom">From</label>
                         <div style="display:flex;gap:5px;width:100%;">
                             <select id="routeFrom" class="route-select" style="flex:1;">
@@ -102,6 +109,29 @@
                     </div>
                 </div>
                 <div id="routeResult" class="route-result"></div>
+            </div>
+
+            <div class="tool-section admin-only collapsible-section" id="routingTesterSection">
+                <h3 class="collapsible-trigger" id="routingTesterTrigger" title="Click to expand/collapse Pathfinding Tester">
+                    <span>Pathfinding Tester</span>
+                    <span class="chevron">▶</span>
+                </h3>
+                <div class="collapsible-content collapsed" id="routingTesterContent">
+                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; font-family: monospace;">
+                        Compare standard A* vs Dijkstra across all possible network routes.
+                    </p>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button id="runTesterBtn" class="btn-find-route" style="flex: 2; height: auto; padding: 10px; margin-bottom: 0;">Run Comparison Test</button>
+                        <button id="exportTesterBtn" class="btn-pick" style="flex: 1; height: auto; padding: 10px; display: none;" title="Export results as TXT">📥 Export</button>
+                    </div>
+                    <div id="testerProgressBarContainer" class="tester-progress-container" style="display: none; margin-bottom: 10px;">
+                        <div class="tester-progress-bar-bg">
+                            <div id="testerProgressBar" class="tester-progress-bar"></div>
+                        </div>
+                        <span id="testerProgressText" style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace; display: block; text-align: center; margin-top: 4px;">0/0 routes tested</span>
+                    </div>
+                    <div id="testerResults" class="tester-results"></div>
+                </div>
             </div>
 
             <div class="tool-section admin-only collapsible-section" id="trackStationsSection">
@@ -448,6 +478,25 @@
                     if (chevron) chevron.textContent = '▼';
                 } else {
                     trackStationsContent.classList.add('collapsed');
+                    if (chevron) chevron.textContent = '▶';
+                }
+            });
+        }
+
+        // ======= COLLAPSIBLE ROUTING TESTER LOGIC =======
+        const routingTesterTrigger = document.getElementById('routingTesterTrigger');
+        const routingTesterContent = document.getElementById('routingTesterContent');
+
+        if (routingTesterTrigger && routingTesterContent) {
+            routingTesterTrigger.addEventListener('click', () => {
+                const isCollapsed = routingTesterContent.classList.contains('collapsed');
+                const chevron = routingTesterTrigger.querySelector('.chevron');
+                
+                if (isCollapsed) {
+                    routingTesterContent.classList.remove('collapsed');
+                    if (chevron) chevron.textContent = '▼';
+                } else {
+                    routingTesterContent.classList.add('collapsed');
                     if (chevron) chevron.textContent = '▶';
                 }
             });

@@ -155,9 +155,17 @@ function buildStationGraph() {
     return graph;
 }
 
-function findRoute(fromKey, toKey) {
+function findRoute(fromKey, toKey, algorithm = selectedAlgorithm, returnFullResult = false) {
+    const startTime = performance.now();
+    let nodesVisited = 0;
+
     const graph = getCachedGraph();
-    if (!graph.has(fromKey) || !graph.has(toKey)) return null;
+    if (!graph.has(fromKey) || !graph.has(toKey)) {
+        if (returnFullResult) {
+            return { path: null, nodesVisited: 0, executionTime: performance.now() - startTime };
+        }
+        return null;
+    }
 
     const [targetX, targetY] = toKey.split(',').map(Number);
 
@@ -168,6 +176,7 @@ function findRoute(fromKey, toKey) {
 
     // Heuristic: Optimistic time to reach destination in hours
     function getHeuristic(key) {
+        if (algorithm === 'dijkstra') return 0;
         const [x, y] = key.split(',').map(Number);
         const a = Math.abs(x - targetX);
         const b = Math.abs(y - targetY);
@@ -190,6 +199,7 @@ function findRoute(fromKey, toKey) {
         // Sort openSet by fScore (Min-priority queue behavior)
         openSet.sort((a, b) => fScore.get(a) - fScore.get(b));
         const curr = openSet.shift();
+        nodesVisited++;
 
         // Skip if already fully processed
         if (closedSet.has(curr)) continue;
@@ -206,6 +216,9 @@ function findRoute(fromKey, toKey) {
                     viaTransfer: info.viaTransfer
                 });
                 node = info.prev;
+            }
+            if (returnFullResult) {
+                return { path, nodesVisited, executionTime: performance.now() - startTime };
             }
             return path;
         }
@@ -242,8 +255,12 @@ function findRoute(fromKey, toKey) {
         }
     }
 
+    if (returnFullResult) {
+        return { path: null, nodesVisited, executionTime: performance.now() - startTime };
+    }
     return null;
 }
+
 
 function getTrackCellsBetweenStations(fromKey, toKey, color) {
     const cells = new Set();
@@ -725,7 +742,199 @@ function initRouteFinder() {
     fromSelect.addEventListener('change', () => syncSelectColor(fromSelect));
     toSelect.addEventListener('change', () => syncSelectColor(toSelect));
 
+    // Algorithm Dropdown change handler
+    const algorithmSelect = document.getElementById('routeAlgorithm');
+    if (algorithmSelect) {
+        algorithmSelect.value = selectedAlgorithm;
+        algorithmSelect.addEventListener('change', () => {
+            selectedAlgorithm = algorithmSelect.value;
+            // If a route was already being shown, auto-refresh
+            if (resultDiv.children.length > 0 && !resultDiv.querySelector('.route-error') && !isMeasuringMode) {
+                findBtn.click();
+            }
+        });
+    }
+
+    // Tester Button click handler
+    const runTesterBtn = document.getElementById('runTesterBtn');
+    if (runTesterBtn) {
+        runTesterBtn.addEventListener('click', runAllRoutesComparison);
+    }
+
+    // Export Button click handler
+    const exportTesterBtn = document.getElementById('exportTesterBtn');
+    if (exportTesterBtn) {
+        exportTesterBtn.addEventListener('click', () => {
+            if (!lastTestResultsTxt) return;
+            const blob = new Blob([lastTestResultsTxt], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pathfinding-test-results-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
     initColorExcludePalette();
+}
+
+let lastTestResultsTxt = null;
+
+function runAllRoutesComparison() {
+    const stations = getAllStations();
+    const resultDiv = document.getElementById('testerResults');
+    const runBtn = document.getElementById('runTesterBtn');
+    const exportBtn = document.getElementById('exportTesterBtn');
+    const progressContainer = document.getElementById('testerProgressBarContainer');
+    const progressBar = document.getElementById('testerProgressBar');
+    const progressText = document.getElementById('testerProgressText');
+
+    if (!resultDiv) return;
+    if (stations.length < 2) {
+        resultDiv.innerHTML = '<div class="tester-card" style="border-color:#ef4444;color:#ef4444;box-shadow:2px 2px 0px #ef4444;">⚠️ At least 2 stations are needed to run a comparison test.</div>';
+        return;
+    }
+
+    // Generate all pairs
+    const pairs = [];
+    for (let i = 0; i < stations.length; i++) {
+        for (let j = 0; j < stations.length; j++) {
+            if (i !== j) {
+                pairs.push({ from: stations[i], to: stations[j] });
+            }
+        }
+    }
+
+    // Disable button & show progress, hide export
+    runBtn.disabled = true;
+    runBtn.textContent = 'Testing...';
+    if (exportBtn) exportBtn.style.display = 'none';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = `0/${pairs.length} routes tested`;
+    resultDiv.innerHTML = '';
+    lastTestResultsTxt = null;
+
+    let pairIndex = 0;
+    const totalPairs = pairs.length;
+
+    let successfulRoutes = 0;
+    let totalNodesAStar = 0;
+    let totalNodesDijkstra = 0;
+    let totalTimeAStar = 0;
+    let totalTimeDijkstra = 0;
+
+    const CHUNK_SIZE = 50; // process 50 routes per frame to avoid lag
+
+    function processNextChunk() {
+        const end = Math.min(pairIndex + CHUNK_SIZE, totalPairs);
+        for (; pairIndex < end; pairIndex++) {
+            const pair = pairs[pairIndex];
+            
+            // Run A* with full metrics return
+            const astarRes = findRoute(pair.from.key, pair.to.key, 'astar', true);
+            // Run Dijkstra with full metrics return
+            const dijkstraRes = findRoute(pair.from.key, pair.to.key, 'dijkstra', true);
+
+            if (astarRes && astarRes.path && dijkstraRes && dijkstraRes.path) {
+                successfulRoutes++;
+                totalNodesAStar += astarRes.nodesVisited;
+                totalNodesDijkstra += dijkstraRes.nodesVisited;
+                totalTimeAStar += astarRes.executionTime;
+                totalTimeDijkstra += dijkstraRes.executionTime;
+            }
+        }
+
+        // Update progress bar & text
+        const pct = (pairIndex / totalPairs) * 100;
+        progressBar.style.width = `${pct}%`;
+        progressText.textContent = `${pairIndex}/${totalPairs} routes tested`;
+
+        if (pairIndex < totalPairs) {
+            requestAnimationFrame(processNextChunk);
+        } else {
+            // Done! Render results
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run Comparison Test';
+            
+            if (successfulRoutes === 0) {
+                resultDiv.innerHTML = '<div class="tester-card" style="border-color:#ef4444;color:#ef4444;box-shadow:2px 2px 0px #ef4444;">⚠️ No reachable routes found between the placed stations.</div>';
+                return;
+            }
+
+            // Calculations
+            const avgNodesAStar = totalNodesAStar / successfulRoutes;
+            const avgNodesDijkstra = totalNodesDijkstra / successfulRoutes;
+            const nodeSavings = ((totalNodesDijkstra - totalNodesAStar) / totalNodesDijkstra) * 100;
+
+            const avgTimeAStar = totalTimeAStar / successfulRoutes;
+            const avgTimeDijkstra = totalTimeDijkstra / successfulRoutes;
+            const timeSavings = ((totalTimeDijkstra - totalTimeAStar) / totalTimeDijkstra) * 100;
+
+            // Generate TXT report content
+            lastTestResultsTxt = `=========================================
+METRO BASAU PATHFINDING TEST REPORT
+=========================================
+Generated on: ${new Date().toLocaleString()}
+Total Stations in Network: ${stations.length}
+Total Routes Evaluated: ${totalPairs}
+Total Reachable Routes: ${successfulRoutes}
+
+-----------------------------------------
+1. NODES EXPLORED (AVERAGE PER ROUTE)
+-----------------------------------------
+Dijkstra's Algorithm:  ${avgNodesDijkstra.toFixed(2)} nodes
+A* Search (Admissible): ${avgNodesAStar.toFixed(2)} nodes
+Efficiency Gain of A*:  ${nodeSavings.toFixed(2)}% fewer nodes explored
+
+-----------------------------------------
+2. SEARCH EXECUTION TIME (TOTAL)
+-----------------------------------------
+Dijkstra's Algorithm:  ${totalTimeDijkstra.toFixed(3)} ms
+A* Search (Admissible): ${totalTimeAStar.toFixed(3)} ms
+Efficiency Gain of A*:  ${timeSavings.toFixed(3)}% faster search time
+
+=========================================
+End of Report
+=========================================`;
+
+            if (exportBtn) exportBtn.style.display = 'block';
+
+            let html = '<div class="tester-card">';
+            html += '<div class="tester-card-header">📊 Test Results Summary</div>';
+            html += `<div class="tester-metric-row"><span>Total Stations:</span><strong>${stations.length}</strong></div>`;
+            html += `<div class="tester-metric-row"><span>Routes Evaluated:</span><strong>${totalPairs}</strong></div>`;
+            html += `<div class="tester-metric-row"><span>Reachable Routes:</span><strong>${successfulRoutes}</strong></div>`;
+            html += '</div>';
+
+            // Nodes Explored Card
+            html += '<div class="tester-card">';
+            html += '<div class="tester-card-header">🔍 Nodes Explored (Avg)</div>';
+            html += `<div class="tester-metric-row"><span>Dijkstra's Algorithm:</span><strong>${avgNodesDijkstra.toFixed(1)} nodes</strong></div>`;
+            html += `<div class="tester-metric-row"><span>A* Search (Admissible):</span><strong>${avgNodesAStar.toFixed(1)} nodes</strong></div>`;
+            html += '<div class="tester-metric-row" style="border-top: 1px dashed var(--border-primary); margin-top: 6px; padding-top: 6px;">';
+            html += '<span>A* Search Savings:</span>';
+            html += `<span class="tester-savings-badge positive">${nodeSavings.toFixed(1)}% fewer</span>`;
+            html += '</div>';
+            html += '</div>';
+
+            // Time Taken Card
+            html += '<div class="tester-card">';
+            html += '<div class="tester-card-header">⏱️ Search Time (Total)</div>';
+            html += `<div class="tester-metric-row"><span>Dijkstra's Algorithm:</span><strong>${totalTimeDijkstra.toFixed(3)} ms</strong></div>`;
+            html += `<div class="tester-metric-row"><span>A* Search (Admissible):</span><strong>${totalTimeAStar.toFixed(3)} ms</strong></div>`;
+            html += '<div class="tester-metric-row" style="border-top: 1px dashed var(--border-primary); margin-top: 6px; padding-top: 6px;">';
+            html += '<span>Execution Speedup:</span>';
+            html += `<span class="tester-savings-badge positive">${timeSavings.toFixed(1)}% faster</span>`;
+            html += '</div>';
+            html += '</div>';
+
+            resultDiv.innerHTML = html;
+        }
+    }
+
+    requestAnimationFrame(processNextChunk);
 }
 
 function initColorExcludePalette() {
