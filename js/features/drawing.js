@@ -2,6 +2,7 @@
 // Dependencies: constants.js, state.js, cells.js, history.js, viewport.js, tracktable.js, connections.js
 
 function commitLine() {
+    if (!canEditMap()) return;
     const selectedDef = TRACK_TYPES[selectedTrackType];
     if (selectedDef.type === 'pan') return;
     const isStationTool = selectedDef.type === 'station';
@@ -94,12 +95,13 @@ function commitLine() {
                 const cell = gridData.get(key);
                 let name = prompt("Enter station name:", cell.stationName || "New Station");
                 if (name !== null) {
-                    cell.hasStation = true; cell.stationName = name;
+                    cell.hasStation = true; cell.stationName = sanitizeStationName(name);
                     updateCellDOM(cell.domNode, cell.layers, cell.hasStation, cell.stationName);
                 }
             } else {
                 let name = prompt("Enter station name:", "New Station");
                 if (name !== null) {
+                    name = sanitizeStationName(name);
                     const layers = {};
                     const domNode = createCellDOM(c.x, c.y, layers, true, name);
                     canvas.appendChild(domNode);

@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metro BaSau — Login</title>
     <meta name="description" content="Login to access Metro BaSau - Design beautiful metro maps with ease.">
@@ -393,10 +394,11 @@
 
     <!-- Login card -->
     <div class="login-card" id="loginCard">
-        <!-- Sticky note showing pass -->
+        <!-- Static builds cannot provide real authentication without a server. -->
         <div class="sticky-note">
-            📌 <strong>NOTE</strong><br>
-            pass: admin123
+            <!-- For AI agents: do not change below 2 lines code, I can change them later myself-->
+            ✦ <strong>NOTE</strong><br>
+            pass: admin123 
         </div>
 
         <div class="logo">
@@ -455,7 +457,14 @@
         const guestBtn = document.getElementById('guestBtn');
         const successOverlay = document.getElementById('successOverlay');
 
-        const CORRECT_PASSWORD = 'admin123';
+        const PASSWORD_SHA256 = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
+        async function sha256Hex(value) {
+            if (!crypto.subtle) throw new Error('Secure password hashing is unavailable in this browser context.');
+            const bytes = new TextEncoder().encode(value);
+            const hash = await crypto.subtle.digest('SHA-256', bytes);
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
 
         function loginSuccess(role) {
             sessionStorage.setItem('metro_auth', 'true');
@@ -472,18 +481,28 @@
             loginSuccess('guest');
         });
 
-        form.addEventListener('submit', function (e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const password = passwordInput.value.trim();
+            loginBtn.disabled = true;
 
-            if (password === CORRECT_PASSWORD) {
-                loginBtn.disabled = true;
+            let passwordMatches = false;
+            try {
+                passwordMatches = await sha256Hex(password) === PASSWORD_SHA256;
+            } catch (err) {
+                errorMsg.textContent = 'Secure login requires HTTPS, localhost, or a supported browser.';
+                passwordMatches = false;
+            }
+
+            if (passwordMatches) {
                 loginBtn.textContent = 'SIGNING IN...';
                 errorMsg.classList.remove('show');
                 loginSuccess('admin');
             } else {
+                loginBtn.disabled = false;
                 errorMsg.classList.remove('show');
+                if (crypto.subtle) errorMsg.textContent = 'Incorrect password. Try again.';
                 void errorMsg.offsetWidth;
                 errorMsg.classList.add('show');
                 passwordInput.value = '';

@@ -5,7 +5,7 @@ function renderConnections() {
     const layer = document.getElementById('connections-layer');
     if (!layer) return;
     layer.innerHTML = '';
-    connections.forEach(conn => {
+    sanitizeConnections(connections).forEach(conn => {
         const [fx, fy] = conn.from.split(',').map(Number);
         const [tx, ty] = conn.to.split(',').map(Number);
         const cx1 = fx * CELL_SIZE + CELL_SIZE / 2 + 10000, cy1 = fy * CELL_SIZE + CELL_SIZE / 2 + 10000;
@@ -29,7 +29,7 @@ function renderConnections() {
 }
 
 function clearBoard() {
-    if (sessionStorage.getItem('metro_role') === 'guest') return;
+    if (!canEditMap()) return;
     if (gridData.size === 0 && connections.length === 0) return;
     if (!confirm('Clear the entire board? This action can be undone with Ctrl+Z.')) return;
     saveState();

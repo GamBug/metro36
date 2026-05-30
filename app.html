@@ -27,7 +27,7 @@
                 <input type="file" id="loadMapFile" accept=".json" style="display: none;">
             </div>
             <button id="clearBtn" class="btn-clear" title="Ctrl+E">CLEAR</button>
-            <button id="themeToggle" class="theme-toggle" title="Toggle Theme">🌓</button>
+            <button id="tutorialBtn" class="btn-tutorial" title="Show Tutorial">TUTORIAL</button>
             <button id="logoutBtn" class="btn-logout" title="Back to Login">LOGOUT</button>
         </div>
     </div>
@@ -97,14 +97,21 @@
                         <button id="findRouteBtn" class="btn-find-route" style="flex: 2;" title="Press Enter">Find Route (Enter)</button>
                         <button id="randomRouteBtn" class="btn-pick" style="flex: 1; height: auto;" title="Random route">🎲 Random</button>
                     </div>
-                    <button id="clearRouteBtn" class="btn-clear-route" style="display:none;">Clear Route</button>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <button id="clearRouteBtn" class="btn-clear-route" style="display:none; flex: 1; margin-top: 0; height: 38px;">Clear Route</button>
+                    </div>
                 </div>
                 <div id="routeResult" class="route-result"></div>
             </div>
 
-            <div class="tool-section admin-only">
-                <h3>Track Stations</h3>
-                <div id="trackList" style="color: #94a3b8; font-size: 0.9rem;">No tracks placed.</div>
+            <div class="tool-section admin-only collapsible-section" id="trackStationsSection">
+                <h3 class="collapsible-trigger" id="trackStationsTrigger" title="Click to expand/collapse Track Stations">
+                    <span>Track Stations</span>
+                    <span class="chevron">▶</span>
+                </h3>
+                <div class="collapsible-content collapsed" id="trackStationsContent">
+                    <div id="trackList" style="color: #94a3b8; font-size: 0.9rem;">No tracks placed.</div>
+                </div>
             </div>
 
             <div class="tool-section admin-only">
@@ -199,10 +206,132 @@
         </defs>
     </svg>
 
+    <!-- Tutorial Modal -->
+    <div id="tutorialModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Metro BaSau — User Guide</h2>
+                <button class="modal-close-btn" id="closeTutorialHeaderBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tutorial-tabs">
+                    <button class="tab-btn active" data-tab="general">General Guide</button>
+                    <button class="tab-btn" data-tab="tools">Tools & Features</button>
+                    <button class="tab-btn" data-tab="shortcuts">Shortcuts</button>
+                </div>
+
+                <!-- Tab 1: General -->
+                <div class="tab-content active" id="tab-general">
+                    <h3>Welcome to Metro BaSau Map Builder!</h3>
+                    <p>Metro BaSau is a professional, high-performance editor that allows you to construct and analyze complex transit maps. Whether you are building real-world network maps or abstract designs, these instructions will get you started quickly.</p>
+                    
+                    <h3>Drawing Tracks & Stations</h3>
+                    <ul>
+                        <li><strong>Select a Color:</strong> Choose a color from the <strong>Line Color</strong> palette in the left sidebar or press keys <kbd>1</kbd> to <kbd>8</kbd>.</li>
+                        <li><strong>Draw Tracks:</strong> Select a track type or the <strong>Auto Tool</strong> (which resolves curves/crossings automatically). Hold down the left mouse button on the grid and drag to draw a line. Release to commit the track.</li>
+                        <li><strong>Create a Station:</strong> Select the <strong>Station</strong> tool (represented by a white circle icon). Click on any grid cell to place a station. You will be prompted to enter a station name. You can place stations on top of existing tracks to make them stops.</li>
+                    </ul>
+                    
+                    <h3>Editing & Erasing</h3>
+                    <ul>
+                        <li><strong>Erase Elements:</strong> Select the <strong>Eraser</strong> tool (trash can icon or press <kbd>E</kbd>). Click and drag over cells to remove tracks and stations.</li>
+                        <li><strong>Undo/Redo Actions:</strong> Use <kbd>Ctrl + Z</kbd> to undo and <kbd>Ctrl + Y</kbd> to redo your changes at any time.</li>
+                        <li><strong>Pan & Zoom:</strong> Select the <strong>Pan</strong> tool (hand icon or press <kbd>V</kbd>) to click and drag to scroll the canvas. Use your mouse scroll wheel to zoom in and out.</li>
+                    </ul>
+                </div>
+
+                <!-- Tab 2: Tools -->
+                <div class="tab-content" id="tab-tools">
+                    <h3>Advanced Features</h3>
+                    
+                    <h3>1. Transfer Connections</h3>
+                    <p>Create transfer pathways between adjacent stations (especially on different lines) to allow passengers to transition. Choose the <strong>Transfer</strong> tool, then click the start station and then the destination station.</p>
+                    
+                    <h3>2. One-Way Tracks</h3>
+                    <p>Control the direction of flow on line tracks. Choose the <strong>One-Way</strong> tool and click on a placed track to assign an operating direction. Repeated clicks cycle through available directions.</p>
+
+                    <h3>3. Route Finder</h3>
+                    <p>Select a departure station in <strong>From</strong> and an arrival station in <strong>To</strong>. Click <strong>Find Route</strong> to see the path, distance, number of stations, and transition line instructions. You can also exclude specific lines or generate a random route.</p>
+
+                    <h3>4. Reference Image</h3>
+                    <p>Load an image file as a background blueprint underlay. Use the opacity and scale sliders to calibrate the drawing size, and click <strong>Move Reference</strong> (or hold <kbd>Shift</kbd>) to drag the blueprint around.</p>
+                </div>
+
+                <!-- Tab 3: Shortcuts -->
+                <div class="tab-content" id="tab-shortcuts">
+                    <h3>Keyboard Shortcuts</h3>
+                    <p>Work faster with quick keys for editing, navigating, and file actions.</p>
+                    <table class="shortcuts-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Shortcut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Save Map File</td>
+                                <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Load Map File</td>
+                                <td><kbd>Ctrl</kbd> + <kbd>O</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Clear Canvas</td>
+                                <td><kbd>Ctrl</kbd> + <kbd>E</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Undo / Redo</td>
+                                <td><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Colors 1-8</td>
+                                <td><kbd>1</kbd> to <kbd>8</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Find Route</td>
+                                <td><kbd>Enter</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Eraser Tool</td>
+                                <td><kbd>E</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Auto Track Tool</td>
+                                <td><kbd>M</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Station Tool</td>
+                                <td><kbd>S</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Transfer Tool</td>
+                                <td><kbd>T</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select Pan Tool</td>
+                                <td><kbd>V</kbd></td>
+                            </tr>
+                            <tr>
+                                <td>Select One-Way Tool</td>
+                                <td><kbd>O</kbd></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-close" id="closeTutorialFooterBtn">Got It</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modular Scripts (in dependency order) -->
     <!-- Core Dependencies -->
     <script src="js/core/constants.js"></script>
     <script src="js/core/state.js"></script>
+    <script src="js/core/security.js"></script>
     
     <!-- UI Modules -->
     <script src="js/ui/cells.js"></script>
@@ -247,7 +376,7 @@
         toggleLeftBtn.addEventListener('click', () => {
             toolbar.classList.toggle('collapsed');
             const isCollapsed = toolbar.classList.contains('collapsed');
-            toggleLeftBtn.textContent = isCollapsed ? '▶' : '◀';
+            toggleLeftBtn.textContent = isCollapsed ? '▶' : '◀'; 
             toggleLeftBtn.title = isCollapsed ? 'Expand Left Sidebar' : 'Collapse Left Sidebar';
         });
 
@@ -257,6 +386,72 @@
             toggleRightBtn.textContent = isCollapsed ? '◀' : '▶';
             toggleRightBtn.title = isCollapsed ? 'Expand Right Sidebar' : 'Collapse Right Sidebar';
         });
+
+        // ======= TUTORIAL MODAL LOGIC =======
+        const tutorialBtn = document.getElementById('tutorialBtn');
+        const tutorialModal = document.getElementById('tutorialModal');
+        const closeTutorialHeaderBtn = document.getElementById('closeTutorialHeaderBtn');
+        const closeTutorialFooterBtn = document.getElementById('closeTutorialFooterBtn');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        if (tutorialBtn && tutorialModal) {
+            tutorialBtn.addEventListener('click', () => {
+                tutorialModal.style.display = 'flex';
+            });
+
+            const closeModal = () => {
+                tutorialModal.style.display = 'none';
+            };
+
+            if (closeTutorialHeaderBtn) closeTutorialHeaderBtn.addEventListener('click', closeModal);
+            if (closeTutorialFooterBtn) closeTutorialFooterBtn.addEventListener('click', closeModal);
+
+            // Close modal when clicking outside the modal card
+            tutorialModal.addEventListener('click', (e) => {
+                if (e.target === tutorialModal) {
+                    closeModal();
+                }
+            });
+
+            // Tab Switching Logic
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetTab = btn.getAttribute('data-tab');
+
+                    // Activate the button
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Activate the tab content
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `tab-${targetTab}`) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            });
+        }
+
+        // ======= COLLAPSIBLE TRACK STATIONS LOGIC =======
+        const trackStationsTrigger = document.getElementById('trackStationsTrigger');
+        const trackStationsContent = document.getElementById('trackStationsContent');
+
+        if (trackStationsTrigger && trackStationsContent) {
+            trackStationsTrigger.addEventListener('click', () => {
+                const isCollapsed = trackStationsContent.classList.contains('collapsed');
+                const chevron = trackStationsTrigger.querySelector('.chevron');
+                
+                if (isCollapsed) {
+                    trackStationsContent.classList.remove('collapsed');
+                    if (chevron) chevron.textContent = '▼';
+                } else {
+                    trackStationsContent.classList.add('collapsed');
+                    if (chevron) chevron.textContent = '▶';
+                }
+            });
+        }
     </script>
 </body>
 

@@ -14,9 +14,10 @@ function createCellDOM(gx, gy, layers, hasStation, stationName) {
 
 function updateCellDOM(cell, layers, hasStation, stationName) {
     let svgInner = '';
-    const colors = Object.keys(layers);
+    const safeLayers = sanitizeLayers(layers);
+    const colors = Object.keys(safeLayers);
     colors.forEach(color => {
-        const layer = layers[color];
+        const layer = safeLayers[color];
         const trackDef = TRACK_TYPES[layer.type];
         if (trackDef && trackDef.html) {
             svgInner += `<g class="track-layer" style="color:${color}" data-color="${color}">${trackDef.html}</g>`;
@@ -51,5 +52,5 @@ function updateCellDOM(cell, layers, hasStation, stationName) {
 // Helper: get first color of a cell (for backward compat)
 function cellFirstColor(cell) {
     const keys = Object.keys(cell.layers);
-    return keys.length > 0 ? keys[0] : '#94a3b8';
+    return keys.find(color => isSafeMetroColor(color)) || '#94a3b8';
 }

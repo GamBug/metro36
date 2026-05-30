@@ -16,6 +16,7 @@ function saveState() {
 }
 
 function undo() {
+    if (!canEditMap()) return;
     if (undoStack.length === 0) return;
     const cur = new Map();
     gridData.forEach((val, key) => cur.set(key, snapshotCell(val)));
@@ -24,6 +25,7 @@ function undo() {
 }
 
 function redo() {
+    if (!canEditMap()) return;
     if (redoStack.length === 0) return;
     const cur = new Map();
     gridData.forEach((val, key) => cur.set(key, snapshotCell(val)));
@@ -41,11 +43,15 @@ function restoreState(stateObj) {
     gridData.forEach(cell => cell.domNode.remove());
     gridData.clear();
     snapshot.forEach((val, key) => {
+        if (!isValidGridKey(key)) return;
         const [gx, gy] = key.split(',').map(Number);
-        const domNode = createCellDOM(gx, gy, val.layers, val.hasStation, val.stationName);
+        const layers = sanitizeLayers(val.layers);
+        const stationName = sanitizeStationName(val.stationName);
+        const domNode = createCellDOM(gx, gy, layers, Boolean(val.hasStation), stationName);
         canvas.appendChild(domNode);
-        gridData.set(key, { layers: val.layers, hasStation: val.hasStation, stationName: val.stationName, domNode });
+        gridData.set(key, { layers, hasStation: Boolean(val.hasStation), stationName, domNode });
     });
+    connections = sanitizeConnections(connections);
     renderConnections();
     clearGraphCache();
     if (typeof updateTrackTable === 'function') updateTrackTable();

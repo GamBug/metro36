@@ -30,3 +30,5 @@ const refImage = document.getElementById('ref-image');
 const gridCursorHighlight = document.getElementById('grid-cursor-highlight');
 
 let pickingRouteTarget = null;
+let isMeasuringMode = false;
+let measureStartKey = null;
