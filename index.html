@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metro BaSau — Login</title>
+    <title data-i18n="login_title">Metro BaSau — Login</title>
     <meta name="description" content="Login to access Metro BaSau - Design beautiful metro maps with ease.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -382,7 +382,6 @@
         }
     </style>
 </head>
-
 <body>
     <!-- Background decorations -->
     <div class="metro-lines-bg">
@@ -404,16 +403,17 @@
         <div class="logo">
             <h1><span class="logo-dot"></span>Metro BaSau</h1>
         </div>
-        <p class="subtitle">Design beautiful metro maps</p>
+        <p class="subtitle" data-i18n="design_subtitle">Design beautiful metro maps</p>
 
         <form id="loginForm" autocomplete="off">
             <div class="form-group">
-                <label for="passwordInput">Password</label>
+                <label for="passwordInput" data-i18n="password_label">Password</label>
                 <div class="input-wrapper">
                     <input
                         type="password"
                         id="passwordInput"
                         placeholder="ENTER PASSWORD"
+                        data-i18n-placeholder="enter_password_placeholder"
                         autofocus
                         required
                     >
@@ -421,21 +421,21 @@
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 12px;">
-                <button type="submit" class="btn-login" id="loginBtn" style="flex: 2;">
+                <button type="submit" class="btn-login" id="loginBtn" style="flex: 2;" data-i18n="sign_in_btn">
                     Sign In
                 </button>
-                <button type="button" class="btn-login btn-guest" id="guestBtn" style="flex: 1;">
+                <button type="button" class="btn-login btn-guest" id="guestBtn" style="flex: 1;" data-i18n="guest_btn">
                     Guest
                 </button>
             </div>
 
-            <div class="error-msg" id="errorMsg">
+            <div class="error-msg" id="errorMsg" data-i18n="incorrect_password">
                 ⚠️ Incorrect password. Try again.
             </div>
         </form>
 
         <div class="footer-note">
-            <span>METRO BASAU</span> — Blueprints & Maps
+            <span>METRO BASAU</span> — <span style="font-weight: normal;" data-i18n="blueprints_note">Blueprints & Maps</span>
         </div>
     </div>
 
@@ -444,6 +444,7 @@
         <div class="success-icon"></div>
     </div>
 
+    <script src="js/core/i18n.js"></script>
     <script>
         // If already authenticated, go straight to app
         if (sessionStorage.getItem('metro_auth') === 'true') {
@@ -460,7 +461,7 @@
         const PASSWORD_SHA256 = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
         async function sha256Hex(value) {
-            if (!crypto.subtle) throw new Error('Secure password hashing is unavailable in this browser context.');
+            if (!crypto.subtle) throw new Error(_t('secure_context_error') || 'Secure password hashing is unavailable in this browser context.');
             const bytes = new TextEncoder().encode(value);
             const hash = await crypto.subtle.digest('SHA-256', bytes);
             return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -491,18 +492,18 @@
             try {
                 passwordMatches = await sha256Hex(password) === PASSWORD_SHA256;
             } catch (err) {
-                errorMsg.textContent = 'Secure login requires HTTPS, localhost, or a supported browser.';
+                errorMsg.textContent = _t('secure_context_error') || 'Secure login requires HTTPS, localhost, or a supported browser.';
                 passwordMatches = false;
             }
 
             if (passwordMatches) {
-                loginBtn.textContent = 'SIGNING IN...';
+                loginBtn.textContent = _t('signing_in_btn') || 'SIGNING IN...';
                 errorMsg.classList.remove('show');
                 loginSuccess('admin');
             } else {
                 loginBtn.disabled = false;
                 errorMsg.classList.remove('show');
-                if (crypto.subtle) errorMsg.textContent = 'Incorrect password. Try again.';
+                if (crypto.subtle) errorMsg.textContent = _t('incorrect_password') || 'Incorrect password. Try again.';
                 void errorMsg.offsetWidth;
                 errorMsg.classList.add('show');
                 passwordInput.value = '';

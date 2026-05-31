@@ -1,393 +1,263 @@
-# Đánh Giá Thuật Toán Tìm Đường (Routing Algorithm)
+# Routing Algorithm and Graph Structure
 
-## 📊 Tổng Quan
+This document describes the current real-map routing implementation in `js/pathfinding.js` and the matching C++ implementation in `cpp/pathfinding.cpp`.
 
-Code sử dụng **BFS (Breadth-First Search)** để tìm đường ngắn nhất giữa hai trạm metro.
+## Data Source
 
-**Tính Năng Transfer (Kết Nối Trạm):**
-- ✅ **Transfer connections hỗ trợ**: Có thể kết nối 2 trạm bất kỳ (T key - "Connect")
-- ✅ **Chi phí transfer = 0**: Khi 2 trạm được kết nối, chi phí di chuyển = 0 (instant connection)
-- ✅ **Ưu tiên transfers**: Thuật toán sẽ ưu tiên sử dụng transfer nếu nó rút ngắn đường
+The fallback rail network is built from CTA static GTFS data:
 
----
-
-## 🔍 Chi Tiết Thuật Toán & Transfer
-
-### 1. **buildStationGraph()** - Xây Dựng Đồ Thị
-```
-Complexity: O(G × S × N)
-- G = số màu línea (colors)
-- S = số trạm (stations)  
-- N = số ô lưới (cells)
+```text
+data/cta_gtfs.zip
 ```
 
-**Quy Trình:**
-- Duyệt qua tất cả cells trong gridData
-- Cho mỗi màu, xây dựng mạng lưới trên cùng một línea
-- Sử dụng BFS để tìm các trạm kết nối (reachable)
-- Thêm transfer connections giữa các trạm
+The compact graph used by the browser is:
 
-**Vấn Đề:**
-```javascript
-byColor.forEach((cellsMap, color) => {
-    // BFS mỗi trạm -> O(N) cho mỗi trạm
-    stationsInColor.forEach(sk => {
-        // Chạy BFS lặp lại
-        while (queue.length > 0) { ... }
-    });
-});
-```
----
-
-### **Transfer Connections - Cách Hoạt Động**
-
-```javascript
-// Trong buildStationGraph(), Transfer connections được thêm:
-connections.forEach(conn => {
-    const fc = gridData.get(conn.from), tc = gridData.get(conn.to);
-    if (fc && tc && fc.hasStation && tc.hasStation) {
-        // Thêm cạnh 2 chiều giữa 2 trạm
-        graph.get(conn.from).push({ to: conn.to, color: null, viaTransfer: true });
-        graph.get(conn.to).push({ to: conn.from, color: null, viaTransfer: true });
-    }
-});
+```text
+data/cta_rail_fallback.json
 ```
 
-**Hiện Tại:**
-- BFS không phân biệt chi phí giữa track thường và transfer
-- Mỗi edge đều coi như cost = 1 (số hops)
-- Transfer được mark với `viaTransfer: true` nhưng **không ảnh hưởng** đến việc tìm đường
+The native C++ build uses the same generated data embedded in:
 
-**Vấn đề:**
-- ❌ Transfer connections không được ưu tiên
-- ❌ Nếu có 2 đường cùng số trạm, transfer không được ưu tiên
-
-**Ví dụ:**
-```
-Route A: Station1 -> (track) -> Station2 -> (track) -> StationX [4 trạm]
-Route B: Station1 -> (transfer) -> StationX [2 trạm]
-
-BFS cho cả 2 cùng kết quả, nhưng Route B tốt hơn!
+```text
+cpp/cta_fallback_data.hpp
 ```
 
----
+Relevant GTFS files:
 
-### 2. **findRoute()** - Tìm Đường Ngắn Nhất
+- `stops.txt`: stop and station coordinates.
+- `trips.txt`: maps a trip to a rail route.
+- `stop_times.txt`: ordered stops for each scheduled trip.
+
+`shape_dist_traveled` in `stop_times.txt` is cumulative distance along a trip shape. It is not directly an edge distance. For consecutive stops A and B in the same trip:
+
+```text
+edge distance = shape_dist_traveled(B) - shape_dist_traveled(A)
 ```
-Complexity: O(G × S × N + V + E)
-- buildStationGraph: O(G × S × N)
-- BFS: O(V + E) 
-  - V = số trạm (vertices)
-  - E = số liên kết (edges)
+
+CTA stores this value in feet, so the generated graph converts it to meters.
+
+## Graph Structure
+
+The rail network is represented as an adjacency list.
+
+```text
+Map<stationId, Edge[]>
 ```
 
-**Quy Trình:**
-```javascript
-// 1. Xây dựng đồ thị (CHẠY LẠI MỖI LẦN!)
-const graph = buildStationGraph();
+Each station node is a CTA parent station:
 
-// 2. BFS tìm đường ngắn nhất
-const visited = new Map();
-const queue = [fromKey];
-
-while (queue.length > 0) {
-    const curr = queue.shift();
-    if (curr === toKey) {
-        // Reconstruct path từ parent pointers
-        return path;
-    }
-    for (const edge of graph.get(curr) || []) {
-        if (!visited.has(edge.to)) {
-            visited.set(edge.to, { prev: curr, ... });
-            queue.push(edge.to);
-        }
-    }
+```text
+station = {
+  id,
+  name,
+  lat,
+  lng
 }
 ```
 
-**Thuận Lợi:**
-✅ BFS đảm bảo tìm đường **ngắn nhất** (số trạm ít nhất)  
-✅ Hỗ trợ multi-line metro system  
-✅ Hỗ trợ transfer connections  
-✅ Đơn giản, dễ hiểu  
+The node coordinates are computed from the rail platform stops used in `stop_times.txt`, grouped by `parent_station`. This avoids mixing parent-station coordinates with platform-based edge distances.
 
-**Nhược Điểm:**
-❌ **Xây dựng đồ thị lặp lại** - `buildStationGraph()` gọi mỗi lần `findRoute()`  
-❌ **Không có heuristic** - Không sử dụng Dijkstra hay A*  
-❌ **Không tối ưu về thời gian** - O(N) cho mỗi BFS trong buildStationGraph  
-❌ **Không lưu cache** - Đồ thị được tính toán từ đầu mỗi lần  
-❌ **Transfer không được ưu tiên** - Chi phí transfer = chi phí track thường, không được ưu tiên  
+Each edge is:
 
----
-
-### 3. **getTrackCellsBetweenStations()** - Tìm Tất Cả Cells
-```
-Complexity: O(C) 
-- C = số cells trên đường (cells)
-```
-Sử dụng BFS để tìm tất cả cells nằm trên đường từ stationA → stationB trên một línea cụ thể.
-
----
-
-## 🎯 Performance Analysis
-
-| Scenario | Time Complexity | Vấn Đề | Transfer Optimization |
-|----------|-----------------|--------|----------------------|
-| **Lưới nhỏ** (< 100 cells) | ~10ms | ✅ Chấp nhận được | ✅ Được ưu tiên |
-| **Lưới trung bình** (500-1000 cells) | ~100-500ms | ⚠️ Có thể chậm | ⚠️ Cần cache |
-| **Lưới lớn** (> 5000 cells) | ~1000ms+ | ❌ Rất chậm, UI bị lag | ❌ Cần Dijkstra |
-
-**Transfer Impact**: 
-- Transfer connections (T key) = chi phí 0
-- Sau cải thiện, sẽ được ưu tiên trong tìm đường
-- VD: transfer dài 1 trạm < track 3 trạm
-
----
-
-## 💡 Cải Thiện Đề Xuất
-
-### ✅ **Cải Thiện 0: Ưu Tiên Transfer (BFS + Weighted Steps)**
-Cách đơn giản nhất - tính chi phí = số trạm + (số transfers × 0):
-
-```javascript
-function findRoute_TransferOptimized(fromKey, toKey) {
-    const graph = buildStationGraph();
-    if (!graph.has(fromKey) || !graph.has(toKey)) return null;
-    
-    const visited = new Map();
-    const queue = [fromKey];
-    
-    visited.set(fromKey, { 
-        prev: null, 
-        edgeColor: null, 
-        viaTransfer: false,
-        stepsFromStart: 0  // ← Track steps, transfers = 0 step
-    });
-    
-    while (queue.length > 0) {
-        const curr = queue.shift();
-        const currInfo = visited.get(curr);
-        
-        if (curr === toKey) {
-            const path = []; let node = toKey;
-            while (node !== null) { 
-                const info = visited.get(node); 
-                path.unshift({ stationKey: node, edgeColor: info.edgeColor, viaTransfer: info.viaTransfer }); 
-                node = info.prev; 
-            }
-            return path;
-        }
-        
-        for (const edge of (graph.get(curr) || [])) {
-            if (!visited.has(edge.to)) { 
-                // Transfer = 0 steps, track thường = 1 step
-                const stepsToAdd = edge.viaTransfer ? 0 : 1;
-                const newSteps = currInfo.stepsFromStart + stepsToAdd;
-                
-                visited.set(edge.to, { 
-                    prev: curr, 
-                    edgeColor: edge.color, 
-                    viaTransfer: edge.viaTransfer,
-                    stepsFromStart: newSteps
-                }); 
-                queue.push(edge.to); 
-            }
-        }
-    }
-    return null;
+```text
+edge = {
+  to,
+  weight,
+  line,
+  transfer
 }
 ```
 
-**Lợi ích**: 
-- ✅ Ưu tiên transfer - transfers không tốn "steps"
-- ✅ Ngay lập tức - không cần thay đổi toàn bộ thuật toán
-- ✅ BFS vẫn hoạt động, chỉ track kỹ hơn
-- ✅ Chi phí thấp - chỉ thêm biến `stepsFromStart`
+Where:
 
-**Vấn Đề**:
-- ❌ Vẫn là BFS → không phải always optimal khi có nhiều paths cùng steps
+- `to`: destination station id.
+- `weight`: distance in meters.
+- `line`: CTA route id, such as `Red`, `Blue`, or `Brn`.
+- `transfer`: reserved for explicit transfer edges; current route changes are handled by search state.
 
----
+Edges are added between consecutive stations in each GTFS trip pattern. The graph is undirected for routing, so each segment is inserted in both directions.
 
-### ✅ **Cải Thiện 1A: Hybrid BFS → Priority Queue (Best-Cost)**
-Kết hợp BFS + Dijkstra để luôn lấy đường với ít steps nhất:
+## Edge Weight
 
-```javascript
-function findRoute_BestCost(fromKey, toKey) {
-    const graph = buildStationGraph();
-    if (!graph.has(fromKey) || !graph.has(toKey)) return null;
-    
-    const visited = new Map();
-    const queue = [{ key: fromKey, steps: 0, path: [fromKey] }];
-    let bestPath = null;
-    let bestSteps = Infinity;
-    
-    while (queue.length > 0) {
-        // Sort by steps - always process lowest cost first
-        queue.sort((a, b) => a.steps - b.steps);
-        const { key: curr, steps: currSteps, path: currPath } = queue.shift();
-        
-        if (visited.has(curr)) continue;
-        visited.set(curr, true);
-        
-        if (curr === toKey && currSteps < bestSteps) {
-            bestSteps = currSteps;
-            bestPath = currPath;
-            continue;
-        }
-        
-        // Early termination if found path with fewer steps
-        if (currSteps >= bestSteps) continue;
-        
-        for (const edge of (graph.get(curr) || [])) {
-            if (!visited.has(edge.to)) {
-                const stepsToAdd = edge.viaTransfer ? 0 : 1;
-                queue.push({ 
-                    key: edge.to, 
-                    steps: currSteps + stepsToAdd,
-                    path: [...currPath, edge.to]
-                });
-            }
-        }
-    }
-    
-    return bestPath;
-}
+The stored edge distance is:
+
+```text
+max(GTFS shape distance delta, projected Euclidean distance between node coordinates)
 ```
 
-**Lợi ích**: 
-- ✅ Luôn tìm đường với ít steps nhất
-- ✅ Transfer (cost = 0) tự động được ưu tiên
-- ✅ Chính xác 100%
+This keeps the graph physically consistent: no edge can be shorter than the coordinate lower bound used by the heuristic.
 
-**Nhược Điểm**:
-- ❌ Chậm hơn BFS (sort queue mỗi iteration)
-- ❌ Dùng bộ nhớ hơn (lưu full path)
+The edge cost used by weighted search is train travel time:
 
----
-
-### ✅ **Cải Thiện 1B: Caching Graph**
-```javascript
-let cachedGraph = null;
-let lastGridHash = null;
-
-function getCachedGraph() {
-    const currentHash = hashGridData();
-    if (lastGridHash === currentHash && cachedGraph) {
-        return cachedGraph;
-    }
-    lastGridHash = currentHash;
-    cachedGraph = buildStationGraph();
-    return cachedGraph;
-}
-
-function findRoute(fromKey, toKey) {
-    const graph = getCachedGraph(); // ← Dùng cache
-    // ... BFS code
-}
-```
-**Lợi ích**: Tránh rebuild graph nếu không có thay đổi
-**Tiết kiệm**: ~70-80% thời gian khi tìm nhiều route
-
----
-
-### ✅ **Cải Thiện 2: Sử dụng Dijkstra (cho weighted edges)**
-```javascript
-function findRoute_Dijkstra(fromKey, toKey) {
-    const graph = getCachedGraph();
-    const distances = new Map();
-    const previous = new Map();
-    const unvisited = new Set(graph.keys());
-    
-    graph.keys().forEach(key => {
-        distances.set(key, key === fromKey ? 0 : Infinity);
-    });
-    
-    while (unvisited.size > 0) {
-        let curr = null;
-        let minDist = Infinity;
-        
-        for (let node of unvisited) {
-            if (distances.get(node) < minDist) {
-                minDist = distances.get(node);
-                curr = node;
-            }
-        }
-        
-        if (curr === toKey) break;
-        unvisited.delete(curr);
-        
-        for (const edge of graph.get(curr) || []) {
-            // Transfer costs = 0 (instant connection)
-            // Normal track costs = 1 per station
-            const weight = edge.viaTransfer ? 0 : 1;
-            const newDist = distances.get(curr) + weight;
-            
-            if (newDist < distances.get(edge.to)) {
-                distances.set(edge.to, newDist);
-                previous.set(edge.to, curr);
-            }
-        }
-    }
-    
-    // Reconstruct path
-    const path = [];
-    let node = toKey;
-    while (node) {
-        path.unshift(node);
-        node = previous.get(node);
-    }
-    return path;
-}
-```
-**Lợi ích**: Ưu tiên đường ít trạm, transfers không tốn chi phí
-**Chi phí**: Chỉ ~2-3x chậm hơn BFS, nhưng chất lượng tốt hơn
-**Lưu ý**: Transfer connections (T key) = chi phí 0, tức chúng được ưu tiên tối đa
-
----
-
-### ✅ **Cải Thiện 3: Lazy Graph Building**
-```javascript
-function buildStationGraphOptimized() {
-    const graph = new Map();
-    
-    // Chỉ build edges khi cần, không phải toàn bộ
-    const getEdgesForStation = (stationKey) => {
-        // Build on-the-fly instead of pre-computing all
-    };
-}
+```text
+travel_minutes = edge_distance_meters / (70000 / 60)
 ```
 
----
+The train speed assumption is:
 
-## 📈 So Sánh Thuật Toán
+```text
+70 km/h
+```
 
-| Thuật Toán | Đặc Điểm | Phù Hợp |
-|-----------|----------|--------|
-| **BFS** (hiện tại) | Đơn giản, ngắn nhất | Metro nhỏ (< 1000 cells) |
-| **Dijkstra** | Weighted edges | Multi-line + transfers |
-| **A\*** | Heuristic search | Lưới rất lớn |
-| **Floyd-Warshall** | All-pairs shortest path | Cần tính toàn bộ |
+When the route changes from one CTA line to another, the search adds:
 
----
+```text
+transfer_penalty = 0.01
+```
 
-## 🎓 Kết Luận
+So the full weighted transition cost is:
 
-### Đánh Giá Tổng Thể: **7/10** ⭐
+```text
+cost = travel_minutes + transfer_penalty_if_line_changes
+```
 
-**Tốt:**
-- ✅ Đúng kỹ thuật (BFS tìm đường ngắn nhất)
-- ✅ Hỗ trợ multi-line metro  
-- ✅ **Hỗ trợ transfer connections** (T key) - chi phí = 0
-- ✅ Code dễ hiểu
+Walking is ignored. User-picked map points are snapped to their nearest station, then the algorithms compare rail-only routes between those two station nodes.
 
-**Cần Cải Thiện:**
-- ❌ Không ưu tiên transfer được tự động (BFS coi như bình thường)
-- ❌ Không cache graph → rebuild mỗi lần
-- ❌ Chậm trên lưới lớn
+## State Space
 
-**Khuyến Nghị:**
-1. **Ngay**: Thêm "Cải Thiện 0" - Ưu tiên transfer setup (dễ, hiệu quả)
-2. **Sau**: Thêm caching graph (gain 70-80%)
-3. **Có thời gian**: Upgrade to Dijkstra + weighted edges
-4. **Monitor**: Performance khi lưới > 2000 cells
+For BFS and DFS, the state is only:
+
+```text
+stationId
+```
+
+For Dijkstra and A*, the state includes the previous line so transfer penalties can be charged correctly:
+
+```text
+state = (stationId, currentLine)
+```
+
+The initial state is:
+
+```text
+(startStationId, none)
+```
+
+The goal is reached when:
+
+```text
+stationId == endStationId
+```
+
+Any `currentLine` at the destination is acceptable. This is why the implementation keys weighted search states as station plus line.
+
+## Algorithms
+
+The app compares:
+
+- BFS
+- DFS
+- Dijkstra
+- A* with Lp heuristic, `p = 2`
+- A* with octile heuristic
+
+Dijkstra is the optimal baseline because all weighted edges are non-negative.
+
+BFS and DFS are included for comparison. They do not optimize weighted travel time:
+
+- BFS minimizes hop count.
+- DFS follows one branch deeply before backtracking.
+
+Therefore, BFS/DFS may find valid routes with worse cost than Dijkstra.
+
+## A* Heuristic
+
+For A* Lp, the heuristic estimates remaining train time from station coordinates:
+
+```text
+dx = projected east-west meters
+dy = projected north-south meters
+
+Lp = (dx^p + dy^p)^(1/p)
+h(n) = Lp / (70000 / 60)
+```
+
+The current admissible Lp heuristic is:
+
+```text
+p = 2
+```
+
+This is Euclidean distance converted to train time.
+
+The graph was checked across all reachable ordered station pairs. Results:
+
+```text
+p = 1      overestimates
+p < 2      overestimates for tested fractional values
+p = 2      no overestimation on the fixed graph
+p > 2      also no overestimation, but not better than p=2 for this graph
+```
+
+The UI keeps only `A* Lp(p=2)` because it is admissible and avoids the overhead of non-integer exponentiation.
+
+Octile is included only as a comparison heuristic. It can overestimate on this rail graph because octile distance assumes an 8-direction grid model, while this graph is a free-coordinate rail network.
+
+## Metrics
+
+The comparison table reports:
+
+```text
+Expanded / Time
+```
+
+`Expanded` means the number of search states popped from the frontier and processed.
+
+For weighted search, this counts `(stationId, currentLine)` states, not just unique stations.
+
+`Time` is the runtime of that algorithm call only. It includes:
+
+- local algorithm setup
+- search loop
+- path reconstruction
+- result finalization
+
+It does not include:
+
+- loading GTFS data
+- building the graph
+- rendering the map
+- running other algorithms
+
+`Accuracy` is measured against Dijkstra:
+
+```text
+accuracy = optimal_cost / algorithm_cost
+```
+
+So Dijkstra and admissible A* should report `100%` when they return the optimal route.
+
+## Implementation Locations
+
+Browser implementation:
+
+```text
+js/pathfinding.js
+```
+
+Important functions:
+
+- `buildRailGraph(...)`
+- `bfs(...)`
+- `dfs(...)`
+- `shortestPath(...)` for Dijkstra and A*
+- `lpHeuristic(...)`
+- `octileHeuristic(...)`
+- `compareAlgorithms(...)`
+- `findRailPath(...)`
+
+UI integration:
+
+```text
+js/mapapp.js
+```
+
+Native C++ implementation:
+
+```text
+cpp/pathfinding.hpp
+cpp/pathfinding.cpp
+cpp/pathfinding_selftest.cpp
+```
+
+The browser and C++ versions use the same graph model, edge-cost model, and comparison logic.

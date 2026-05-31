@@ -1,0 +1,11 @@
+.env
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.exe
+*.zip
+__pycache__/
+pipeline\__pycache__/
+data/live/
+vendor/
